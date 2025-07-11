@@ -1,0 +1,52 @@
+{
+  "name": "crawlguard-wp",
+  "version": "1.0.0",
+  "description": "WordPress plugin for AI content monetization - The Stripe for AI Content Access",
+  "main": "crawlguard-wp.php",
+  "scripts": {
+    "dev": "webpack --mode development --watch",
+    "build": "webpack --mode production",
+    "lint:js": "eslint assets/js/**/*.js",
+    "lint:php": "phpcs --standard=WordPress .",
+    "test": "phpunit",
+    "zip": "zip -r crawlguard-wp.zip . -x node_modules/\\* .git/\\* *.zip"
+  },
+  "keywords": [
+    "wordpress",
+    "plugin",
+    "ai",
+    "monetization",
+    "bot-detection",
+    "content-protection",
+    "revenue"
+  ],
+  "author": "CrawlGuard Team",
+  "license": "GPL-2.0-or-later",
+  "devDependencies": {
+    "@babel/core": "^7.22.0",
+    "@babel/preset-env": "^7.22.0",
+    "@babel/preset-react": "^7.22.0",
+    "babel-loader": "^9.1.0",
+    "css-loader": "^6.8.0",
+    "eslint": "^8.42.0",
+    "eslint-config-wordpress": "^2.0.0",
+    "mini-css-extract-plugin": "^2.7.0",
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.0"
+  },
+  "dependencies": {
+    "axios": "^1.4.0",
+    "chart.js": "^4.3.0",
+    "itty-router": "^4.2.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/crawlguard/crawlguard-wp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/crawlguard/crawlguard-wp/issues"
+  },
+  "homepage": "https://crawlguard.com"
+}
