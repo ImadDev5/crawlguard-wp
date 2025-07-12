@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    bootstrap="tests/bootstrap.php"
+    backupGlobals="false"
+    colors="true"
+    convertErrorsToExceptions="true"
+    convertNoticesToExceptions="true"
+    convertWarningsToExceptions="true"
+    processIsolation="false"
+    stopOnFailure="false"
+    verbose="true"
+>
+    <testsuites>
+        <testsuite name="CrawlGuard Test Suite">
+            <directory>./tests/</directory>
+        </testsuite>
+    </testsuites>
+    
+    <filter>
+        <whitelist processUncoveredFilesFromWhitelist="true">
+            <directory suffix=".php">./includes/</directory>
+            <file>./crawlguard-wp.php</file>
+        </whitelist>
+    </filter>
+    
+    <logging>
+        <log type="coverage-html" target="./tests/coverage"/>
+        <log type="coverage-clover" target="./tests/coverage.xml"/>
+    </logging>
+</phpunit>

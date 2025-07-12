@@ -1,8 +1,12 @@
 # CrawlGuard WP - The AI Content Monetization Platform
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
-[![WordPress Plugin](https://img.shields.io/badge/WordPress-Plugin-blue.svg)](https://wordpress.org/)
+[![WordPress Plugin](https://img.shields.io/badge/WordPress-5.0+-blue.svg)](https://wordpress.org/)
+[![PHP Version](https://img.shields.io/badge/PHP-7.4+-purple.svg)](https://php.net/)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-orange.svg)](https://workers.cloudflare.com/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![GitHub Issues](https://img.shields.io/github/issues/yourusername/crawlguard-wp.svg)](https://github.com/yourusername/crawlguard-wp/issues)
+[![GitHub Stars](https://img.shields.io/github/stars/yourusername/crawlguard-wp.svg)](https://github.com/yourusername/crawlguard-wp/stargazers)
 
 > **The Stripe for AI Content Access** - Turn AI bot traffic into revenue with intelligent content protection and monetization.
 
@@ -141,10 +145,15 @@ We're building the future of content monetization. Join us!
 ### Development Setup
 ```bash
 # Clone the repository
-git clone https://github.com/crawlguard/crawlguard-wp.git
+git clone https://github.com/yourusername/crawlguard-wp.git
+cd crawlguard-wp
 
 # Install dependencies
 npm install
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your configuration
 
 # Start development server
 npm run dev

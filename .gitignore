@@ -5,148 +5,60 @@ wp-content/cache/
 wp-content/backup-db/
 wp-content/advanced-cache.php
 wp-content/wp-cache-config.php
-wp-content/blogs.dir/
-wp-content/upgrade/
-wp-content/backup-db/
-wp-content/uploads/
-wp-content/blogs.dir/
-wp-content/upgrade/
-wp-config.php
-wp-*.php
-xmlrpc.php
-.htaccess
+wp-content/cache/
+wp-content/backups/
+sitemap.xml
+*.log
 
-# Node.js
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-package-lock.json
-yarn.lock
-
-# Environment variables
+# Plugin specific
 .env
 .env.local
-.env.development
-.env.test
 .env.production
+config.local.php
 
-# Build outputs
+# Dependencies
+node_modules/
+vendor/
+composer.lock
+package-lock.json
+
+# Build files
 dist/
 build/
 *.min.js
 *.min.css
 
-# IDE and editor files
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS generated files
+# OS files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
-
-# Logs
-logs
-*.log
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage/
-
-# nyc test coverage
-.nyc_output
-
-# Dependency directories
-jspm_packages/
-
-# Optional npm cache directory
-.npm
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# dotenv environment variables file
-.env
-
-# Cloudflare Workers
-.wrangler/
-wrangler.toml.bak
-
-# Database
-*.sql.bak
-*.db
-*.sqlite
-
-# Temporary files
-tmp/
-temp/
-
-# Compressed files
-*.zip
-*.tar.gz
-*.rar
-
-# Secrets and keys
-*.pem
-*.key
-*.crt
-secrets.json
-
-# Local development
-local/
-dev/
+*.tmp
 
 # Testing
-test-results/
 coverage/
+.nyc_output/
+phpunit.xml.local
 
-# Documentation builds
-docs/_build/
-docs/.doctrees/
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Backup files
-*.bak
-*.backup
-*~
+# Database
+*.sql.gz
+*.sql.bak
 
-# Cache
-.cache/
-*.cache
+# Cloudflare
+.wrangler/
+wrangler.toml.local
 
-# Compiled CSS
-*.css.map
-
-# PHP
-vendor/
-composer.lock
-
-# WordPress specific
-wp-content/mu-plugins/
-wp-content/themes/
-wp-content/plugins/
-!wp-content/plugins/crawlguard-wp/
-
-# Exclude everything in wp-content except our plugin
-wp-content/*
-!wp-content/plugins/
-wp-content/plugins/*
-!wp-content/plugins/crawlguard-wp/
+# Stripe
+stripe-cli.log

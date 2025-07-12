@@ -6,10 +6,17 @@
   "scripts": {
     "dev": "webpack --mode development --watch",
     "build": "webpack --mode production",
+    "lint": "npm run lint:js && npm run lint:php",
     "lint:js": "eslint assets/js/**/*.js",
     "lint:php": "phpcs --standard=WordPress .",
+    "format": "prettier --write assets/js/**/*.js",
+    "format:check": "prettier --check assets/js/**/*.js",
     "test": "phpunit",
-    "zip": "zip -r crawlguard-wp.zip . -x node_modules/\\* .git/\\* *.zip"
+    "test:js": "jest",
+    "test:watch": "jest --watch",
+    "zip": "npm run build && zip -r crawlguard-wp.zip . -x node_modules/\\* .git/\\* *.zip .env*",
+    "release": "npm run build && npm run test && npm run zip",
+    "start": "npm run dev"
   },
   "keywords": [
     "wordpress",
@@ -30,7 +37,9 @@
     "css-loader": "^6.8.0",
     "eslint": "^8.42.0",
     "eslint-config-wordpress": "^2.0.0",
+    "jest": "^29.5.0",
     "mini-css-extract-plugin": "^2.7.0",
+    "prettier": "^2.8.8",
     "webpack": "^5.88.0",
     "webpack-cli": "^5.1.0"
   },
@@ -43,10 +52,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/crawlguard/crawlguard-wp.git"
+    "url": "https://github.com/yourusername/crawlguard-wp.git"
   },
   "bugs": {
-    "url": "https://github.com/crawlguard/crawlguard-wp/issues"
+    "url": "https://github.com/yourusername/crawlguard-wp/issues"
   },
   "homepage": "https://crawlguard.com"
 }
