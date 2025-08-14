@@ -64,3 +64,6 @@ wrangler.toml.local
 
 # Stripe
 stripe-cli.log
+
+# Embedded nested repo folder (kept locally, not tracked)
+crawlguard-production/
