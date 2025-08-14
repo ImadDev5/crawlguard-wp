@@ -1,0 +1,391 @@
+version: '3.8'
+
+services:
+  # Database Services
+  postgres:
+    image: postgres:15-alpine
+    container_name: arbiter-postgres
+    environment:
+      POSTGRES_DB: arbiter_platform
+      POSTGRES_USER: arbiter_user
+      POSTGRES_PASSWORD: arbiter_pass
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arbiter_user -d arbiter_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - arbiter-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: arbiter-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass redis_pass
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - arbiter-network
+
+  # File Storage
+  minio:
+    image: minio/minio:latest
+    container_name: arbiter-minio
+    environment:
+      MINIO_ROOT_USER: arbiter_minio
+      MINIO_ROOT_PASSWORD: arbiter_minio_pass
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - arbiter-network
+
+  # Search Engine
+  elasticsearch:
+    image: elasticsearch:8.10.2
+    container_name: arbiter-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - arbiter-network
+
+  # Message Queue
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: arbiter-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: arbiter_rabbit
+      RABBITMQ_DEFAULT_PASS: arbiter_rabbit_pass
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - arbiter-network
+
+  # Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: arbiter-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - api-gateway
+      - frontend
+    networks:
+      - arbiter-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: arbiter-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:3010
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api-gateway
+    networks:
+      - arbiter-network
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+      dockerfile: Dockerfile
+    container_name: arbiter-api-gateway
+    ports:
+      - "3010:3010"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://arbiter_user:arbiter_pass@postgres:5432/arbiter_platform
+      - REDIS_URL=redis://:redis_pass@redis:6379
+      - JWT_SECRET=your-super-secret-jwt-key
+    volumes:
+      - ./backend/api-gateway:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - arbiter-network
+
+  # Microservices
+  auth-service:
+    build:
+      context: ./backend/services/auth
+      dockerfile: Dockerfile
+    container_name: arbiter-auth
+    ports:
+      - "3011:3011"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://arbiter_user:arbiter_pass@postgres:5432/arbiter_platform
+      - REDIS_URL=redis://:redis_pass@redis:6379
+      - JWT_SECRET=your-super-secret-jwt-key
+    volumes:
+      - ./backend/services/auth:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - arbiter-network
+
+  content-service:
+    build:
+      context: ./backend/services/content
+      dockerfile: Dockerfile
+    container_name: arbiter-content
+    ports:
+      - "3012:3012"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://arbiter_user:arbiter_pass@postgres:5432/arbiter_platform
+      - REDIS_URL=redis://:redis_pass@redis:6379
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=arbiter_minio
+      - MINIO_SECRET_KEY=arbiter_minio_pass
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+    volumes:
+      - ./backend/services/content:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - arbiter-network
+
+  payment-service:
+    build:
+      context: ./backend/services/payment
+      dockerfile: Dockerfile
+    container_name: arbiter-payment
+    ports:
+      - "3013:3013"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://arbiter_user:arbiter_pass@postgres:5432/arbiter_platform
+      - REDIS_URL=redis://:redis_pass@redis:6379
+      - STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+      - STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+    volumes:
+      - ./backend/services/payment:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - arbiter-network
+
+  analytics-service:
+    build:
+      context: ./backend/services/analytics
+      dockerfile: Dockerfile
+    container_name: arbiter-analytics
+    ports:
+      - "3014:3014"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://arbiter_user:arbiter_pass@postgres:5432/arbiter_platform
+      - REDIS_URL=redis://:redis_pass@redis:6379
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+    volumes:
+      - ./backend/services/analytics:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - arbiter-network
+
+  notification-service:
+    build:
+      context: ./backend/services/notification
+      dockerfile: Dockerfile
+    container_name: arbiter-notification
+    ports:
+      - "3015:3015"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://arbiter_user:arbiter_pass@postgres:5432/arbiter_platform
+      - REDIS_URL=redis://:redis_pass@redis:6379
+      - RABBITMQ_URL=amqp://arbiter_rabbit:arbiter_rabbit_pass@rabbitmq:5672
+      - SENDGRID_API_KEY=your_sendgrid_api_key
+      - TWILIO_ACCOUNT_SID=your_twilio_sid
+      - TWILIO_AUTH_TOKEN=your_twilio_token
+    volumes:
+      - ./backend/services/notification:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - arbiter-network
+
+  bot-detection-service:
+    build:
+      context: ./backend/services/bot-detection
+      dockerfile: Dockerfile
+    container_name: arbiter-bot-detection
+    ports:
+      - "3016:3016"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://arbiter_user:arbiter_pass@postgres:5432/arbiter_platform
+      - REDIS_URL=redis://:redis_pass@redis:6379
+    volumes:
+      - ./backend/services/bot-detection:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - arbiter-network
+
+  pricing-service:
+    build:
+      context: ./backend/services/pricing
+      dockerfile: Dockerfile
+    container_name: arbiter-pricing
+    ports:
+      - "3017:3017"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://arbiter_user:arbiter_pass@postgres:5432/arbiter_platform
+      - REDIS_URL=redis://:redis_pass@redis:6379
+    volumes:
+      - ./backend/services/pricing:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - arbiter-network
+
+  licensing-service:
+    build:
+      context: ./backend/services/licensing
+      dockerfile: Dockerfile
+    container_name: arbiter-licensing
+    ports:
+      - "3018:3018"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://arbiter_user:arbiter_pass@postgres:5432/arbiter_platform
+      - REDIS_URL=redis://:redis_pass@redis:6379
+    volumes:
+      - ./backend/services/licensing:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - arbiter-network
+
+  # Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: arbiter-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - arbiter-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: arbiter-grafana
+    ports:
+      - "3030:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - arbiter-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  elasticsearch_data:
+  rabbitmq_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  arbiter-network:
+    driver: bridge

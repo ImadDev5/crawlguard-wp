@@ -1,21 +1,55 @@
 <?php
 /**
  * Plugin Name: CrawlGuard WP
- * Plugin URI: https://crawlguard.com
- * Description: Monetize AI bot traffic and protect your content with intelligent bot detection and access control.
+ * Plugin URI: https://creativeinteriorsstudio.com
+ * Description: AI content monetization and bot detection for WordPress. Turn AI bot traffic into revenue with intelligent content protection.
  * Version: 1.0.0
  * Author: CrawlGuard Team
+ * Author URI: https://creativeinteriorsstudio.com
  * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: crawlguard-wp
+ * Domain Path: /languages
+ * Requires at least: 5.0
+ * Tested up to: 6.4
+ * Requires PHP: 7.4
+ * Network: false
  */
 
 if (!defined('ABSPATH')) {
-    exit;
+    exit('Direct access denied.');
 }
 
-define('CRAWLGUARD_VERSION', '1.0.0');
-define('CRAWLGUARD_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('CRAWLGUARD_PLUGIN_PATH', plugin_dir_path(__FILE__));
+if (version_compare(PHP_VERSION, '7.4', '<')) {
+    add_action('admin_notices', function() {
+        echo '<div class="notice notice-error"><p><strong>CrawlGuard WP:</strong> This plugin requires PHP 7.4 or higher. You are running PHP ' . PHP_VERSION . '</p></div>';
+    });
+    return;
+}
+
+global $wp_version;
+if (version_compare($wp_version, '5.0', '<')) {
+    add_action('admin_notices', function() {
+        echo '<div class="notice notice-error"><p><strong>CrawlGuard WP:</strong> This plugin requires WordPress 5.0 or higher.</p></div>';
+    });
+    return;
+}
+
+if (!defined('CRAWLGUARD_VERSION')) {
+    define('CRAWLGUARD_VERSION', '1.0.0');
+}
+
+if (!defined('CRAWLGUARD_PLUGIN_URL')) {
+    define('CRAWLGUARD_PLUGIN_URL', plugin_dir_url(__FILE__));
+}
+
+if (!defined('CRAWLGUARD_PLUGIN_PATH')) {
+    define('CRAWLGUARD_PLUGIN_PATH', plugin_dir_path(__FILE__));
+}
+
+if (!defined('CRAWLGUARD_PLUGIN_FILE')) {
+    define('CRAWLGUARD_PLUGIN_FILE', __FILE__);
+}
 class CrawlGuardWP {
     
     private static $instance = null;
@@ -29,30 +63,65 @@ class CrawlGuardWP {
     
     private function __construct() {
         add_action('init', array($this, 'init'));
-        register_activation_hook(__FILE__, array($this, 'activate'));
-        register_deactivation_hook(__FILE__, array($this, 'deactivate'));
+        register_activation_hook(CRAWLGUARD_PLUGIN_FILE, array($this, 'activate'));
+        register_deactivation_hook(CRAWLGUARD_PLUGIN_FILE, array($this, 'deactivate'));
+        register_uninstall_hook(CRAWLGUARD_PLUGIN_FILE, array('CrawlGuardWP', 'uninstall'));
     }
     
     public function init() {
-        // Load text domain for translations
         load_plugin_textdomain('crawlguard-wp', false, dirname(plugin_basename(__FILE__)) . '/languages');
-        
-        // Initialize core components
-        $this->load_dependencies();
+
+        if (!$this->load_dependencies()) {
+            return;
+        }
+
         $this->init_hooks();
     }
     
     private function load_dependencies() {
-        require_once CRAWLGUARD_PLUGIN_PATH . 'includes/class-bot-detector.php';
-        require_once CRAWLGUARD_PLUGIN_PATH . 'includes/class-api-client.php';
-        require_once CRAWLGUARD_PLUGIN_PATH . 'includes/class-admin.php';
-        require_once CRAWLGUARD_PLUGIN_PATH . 'includes/class-frontend.php';
+        $required_files = array(
+            'includes/class-bot-detector.php',
+            'includes/class-api-client.php',
+            'includes/class-admin.php',
+            'includes/class-frontend.php',
+            'includes/class-cloudflare-integration.php'
+        );
+
+        foreach ($required_files as $file) {
+            $file_path = CRAWLGUARD_PLUGIN_PATH . $file;
+            if (file_exists($file_path)) {
+                require_once $file_path;
+            } else {
+                add_action('admin_notices', function() use ($file) {
+                    echo '<div class="notice notice-error"><p><strong>CrawlGuard WP:</strong> Required file missing: ' . esc_html($file) . '</p></div>';
+                });
+                return false;
+            }
+        }
+        return true;
     }
     
     private function init_hooks() {
         // Initialize bot detection on every request
         add_action('wp', array($this, 'detect_and_handle_bots'));
-        
+
+        // Cloudflare Worker webhook endpoint (for real-time detections)
+        add_action('rest_api_init', function () {
+            register_rest_route('paypercrawl/v1', '/cloudflare-webhook', array(
+                'methods'  => 'POST',
+                'callback' => function ($request) {
+                    $data = json_decode($request->get_body(), true);
+                    if (!class_exists('PayPerCrawl_Cloudflare_Integration')) {
+                        return rest_ensure_response(array('success' => false, 'error' => 'Cloudflare integration missing'));
+                    }
+                    $integration = new PayPerCrawl_Cloudflare_Integration();
+                    $result = $integration->handle_webhook(is_array($data) ? $data : array());
+                    return rest_ensure_response($result);
+                },
+                'permission_callback' => '__return_true',
+            ));
+        });
+
         // Admin interface
         if (is_admin()) {
             new CrawlGuard_Admin();
@@ -67,14 +136,17 @@ class CrawlGuardWP {
     }
     
     public function activate() {
-        // Create necessary database tables
+        if (!current_user_can('activate_plugins')) {
+            return;
+        }
+
         $this->create_tables();
-        
-        // Set default options
         $this->set_default_options();
-        
-        // Flush rewrite rules
+
         flush_rewrite_rules();
+
+        add_option('crawlguard_activation_time', time());
+        add_option('crawlguard_version', CRAWLGUARD_VERSION);
     }
     
     public function deactivate() {
@@ -110,16 +182,38 @@ class CrawlGuardWP {
     
     private function set_default_options() {
         $default_options = array(
+            'api_url' => 'https://api.creativeinteriorsstudio.com/v1',
             'api_key' => '',
             'monetization_enabled' => false,
             'detection_sensitivity' => 'medium',
             'allowed_bots' => array('googlebot', 'bingbot'),
             'pricing_per_request' => 0.001
         );
-        
+
         add_option('crawlguard_options', $default_options);
     }
+
+    public static function uninstall() {
+        if (!current_user_can('delete_plugins')) {
+            return;
+        }
+
+        global $wpdb;
+
+        $table_name = $wpdb->prefix . 'crawlguard_logs';
+        $wpdb->query("DROP TABLE IF EXISTS $table_name");
+
+        delete_option('crawlguard_options');
+        delete_option('crawlguard_activation_time');
+        delete_option('crawlguard_version');
+
+        wp_clear_scheduled_hook('crawlguard_cleanup_logs');
+    }
+
 }
 
-// Initialize the plugin
-CrawlGuardWP::get_instance();
+}
+
+if (class_exists('CrawlGuardWP')) {
+    CrawlGuardWP::get_instance();
+}

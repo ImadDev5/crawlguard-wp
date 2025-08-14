@@ -1,0 +1,823 @@
+openapi: 3.0.0
+info:
+  title: PayPerCrawl API
+  description: Enterprise AI Bot Detection & Monetization Platform API
+  version: 1.0.0
+  contact:
+    name: PayPerCrawl Support
+    email: support@paypercrawl.tech
+    url: https://paypercrawl.tech
+  license:
+    name: Proprietary
+    url: https://paypercrawl.tech/terms
+
+servers:
+  - url: https://api.paypercrawl.tech/api/v1
+    description: Production server
+  - url: http://localhost:3000/api/v1
+    description: Development server
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+tags:
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Licenses
+    description: License management
+  - name: Bot Detection
+    description: Bot detection and analytics
+  - name: Billing
+    description: Subscription and payment management
+  - name: Payouts
+    description: Revenue sharing and payouts
+  - name: Analytics
+    description: Analytics and reporting
+  - name: WordPress
+    description: WordPress plugin specific endpoints
+
+paths:
+  # Authentication Endpoints
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register new user
+      description: Create a new user account (requires invite code in beta)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, firstName, lastName]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                company:
+                  type: string
+                website:
+                  type: string
+                  format: uri
+                inviteCode:
+                  type: string
+                  description: Required during beta phase
+      responses:
+        201:
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        409:
+          $ref: '#/components/responses/Conflict'
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: User login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        200:
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Refresh access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        200:
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+  # License Endpoints
+  /licenses/generate:
+    post:
+      tags: [Licenses]
+      summary: Generate new license
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type:
+                  type: string
+                  enum: [TRIAL, BASIC, PRO, ENTERPRISE]
+                siteUrl:
+                  type: string
+                  format: uri
+                maxSites:
+                  type: integer
+                  minimum: 1
+                validDays:
+                  type: integer
+                  minimum: 1
+      responses:
+        201:
+          description: License created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/License'
+        400:
+          $ref: '#/components/responses/BadRequest'
+
+  /licenses/validate:
+    post:
+      tags: [Licenses]
+      summary: Validate license key
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [licenseKey, siteUrl]
+              properties:
+                licenseKey:
+                  type: string
+                siteUrl:
+                  type: string
+                  format: uri
+      responses:
+        200:
+          description: License validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  license:
+                    $ref: '#/components/schemas/License'
+        400:
+          $ref: '#/components/responses/BadRequest'
+
+  /licenses/revoke:
+    post:
+      tags: [Licenses]
+      summary: Revoke license
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [licenseKey]
+              properties:
+                licenseKey:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        200:
+          description: License revoked
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  # Bot Detection Endpoints
+  /detections/log:
+    post:
+      tags: [Bot Detection]
+      summary: Log bot detection event
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ip, userAgent, method, path, headers]
+              properties:
+                ip:
+                  type: string
+                userAgent:
+                  type: string
+                method:
+                  type: string
+                path:
+                  type: string
+                headers:
+                  type: object
+                siteId:
+                  type: string
+                tlsFingerprint:
+                  type: string
+      responses:
+        200:
+          description: Detection result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectionResult'
+        429:
+          $ref: '#/components/responses/RateLimited'
+
+  /detections/analytics:
+    get:
+      tags: [Bot Detection]
+      summary: Get detection analytics
+      parameters:
+        - name: siteId
+          in: query
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum: [hour, day, week, month]
+      responses:
+        200:
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsData'
+
+  /detections/challenge:
+    post:
+      tags: [Bot Detection]
+      summary: Generate proof-of-work challenge
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ip]
+              properties:
+                ip:
+                  type: string
+      responses:
+        200:
+          description: Challenge generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenge:
+                    type: string
+                  difficulty:
+                    type: integer
+
+  # Billing Endpoints
+  /billing/subscribe:
+    post:
+      tags: [Billing]
+      summary: Create subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan, paymentMethodId]
+              properties:
+                plan:
+                  type: string
+                  enum: [basic, pro, enterprise]
+                paymentMethodId:
+                  type: string
+                coupon:
+                  type: string
+      responses:
+        201:
+          description: Subscription created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        400:
+          $ref: '#/components/responses/BadRequest'
+
+  /billing/cancel:
+    post:
+      tags: [Billing]
+      summary: Cancel subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                immediately:
+                  type: boolean
+                  default: false
+                reason:
+                  type: string
+      responses:
+        200:
+          description: Subscription cancelled
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /billing/webhook:
+    post:
+      tags: [Billing]
+      summary: Stripe webhook endpoint
+      security: []
+      parameters:
+        - name: stripe-signature
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        200:
+          description: Webhook processed
+        400:
+          $ref: '#/components/responses/BadRequest'
+
+  # Payout Endpoints
+  /payouts/balance:
+    get:
+      tags: [Payouts]
+      summary: Get payout balance
+      responses:
+        200:
+          description: Current balance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  available:
+                    type: number
+                  pending:
+                    type: number
+                  currency:
+                    type: string
+
+  /payouts/request:
+    post:
+      tags: [Payouts]
+      summary: Request payout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, method]
+              properties:
+                amount:
+                  type: number
+                  minimum: 10
+                method:
+                  type: string
+                  enum: [stripe, paypal, bank]
+                destination:
+                  type: object
+      responses:
+        201:
+          description: Payout requested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payout'
+        400:
+          $ref: '#/components/responses/BadRequest'
+
+  /payouts/history:
+    get:
+      tags: [Payouts]
+      summary: Get payout history
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, processing, completed, failed]
+      responses:
+        200:
+          description: Payout history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payouts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Payout'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  # Analytics Endpoints
+  /analytics/dashboard:
+    get:
+      tags: [Analytics]
+      summary: Get dashboard statistics
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, week, month, year]
+      responses:
+        200:
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardData'
+
+  /analytics/revenue:
+    get:
+      tags: [Analytics]
+      summary: Get revenue analytics
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month]
+      responses:
+        200:
+          description: Revenue data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevenueData'
+
+  /analytics/bots:
+    get:
+      tags: [Analytics]
+      summary: Get bot analytics
+      parameters:
+        - name: siteId
+          in: query
+          schema:
+            type: string
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [hour, day, week, month]
+      responses:
+        200:
+          description: Bot analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BotAnalytics'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    LimitParam:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    RateLimited:
+      description: Too Many Requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            accessToken:
+              type: string
+            refreshToken:
+              type: string
+            user:
+              $ref: '#/components/schemas/User'
+            apiKey:
+              type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        company:
+          type: string
+        role:
+          type: string
+        emailVerified:
+          type: boolean
+        subscription:
+          $ref: '#/components/schemas/Subscription'
+
+    License:
+      type: object
+      properties:
+        id:
+          type: string
+        key:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        maxSites:
+          type: integer
+        activeSites:
+          type: integer
+        validFrom:
+          type: string
+          format: date-time
+        validUntil:
+          type: string
+          format: date-time
+
+    DetectionResult:
+      type: object
+      properties:
+        id:
+          type: string
+        isBot:
+          type: boolean
+        botType:
+          type: string
+        confidence:
+          type: number
+        action:
+          type: string
+          enum: [ALLOW, BLOCK, CHALLENGE, MONITOR]
+        details:
+          type: object
+
+    Subscription:
+      type: object
+      properties:
+        id:
+          type: string
+        plan:
+          type: string
+        status:
+          type: string
+        currentPeriodStart:
+          type: string
+          format: date-time
+        currentPeriodEnd:
+          type: string
+          format: date-time
+        cancelAtPeriodEnd:
+          type: boolean
+
+    Payout:
+      type: object
+      properties:
+        id:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+        method:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        processedAt:
+          type: string
+          format: date-time
+
+    AnalyticsData:
+      type: object
+      properties:
+        period:
+          type: string
+        totalRequests:
+          type: integer
+        botsDetected:
+          type: integer
+        botsBlocked:
+          type: integer
+        humanTraffic:
+          type: integer
+        timeline:
+          type: array
+          items:
+            type: object
+
+    DashboardData:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+        activeSubscriptions:
+          type: integer
+        totalRevenue:
+          type: number
+        botsBlocked:
+          type: integer
+        recentActivity:
+          type: array
+          items:
+            type: object
+
+    RevenueData:
+      type: object
+      properties:
+        total:
+          type: number
+        subscriptions:
+          type: number
+        oneTime:
+          type: number
+        timeline:
+          type: array
+          items:
+            type: object
+
+    BotAnalytics:
+      type: object
+      properties:
+        topBots:
+          type: array
+          items:
+            type: object
+        detectionMethods:
+          type: object
+        geographicDistribution:
+          type: object
+        timeDistribution:
+          type: array
+          items:
+            type: object
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer

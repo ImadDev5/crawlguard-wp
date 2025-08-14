@@ -1,0 +1,373 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Management
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  username          String?   @unique
+  password          String
+  emailVerified     Boolean   @default(false)
+  verificationToken String?
+  resetToken        String?
+  resetTokenExpiry  DateTime?
+  role              UserRole  @default(USER)
+  status            UserStatus @default(PENDING)
+  inviteCode        String?
+  invitedBy         String?
+  
+  // Profile
+  firstName         String?
+  lastName          String?
+  company           String?
+  website           String?
+  phone             String?
+  
+  // Settings
+  twoFactorEnabled  Boolean   @default(false)
+  twoFactorSecret   String?
+  notificationEmail Boolean   @default(true)
+  notificationSms   Boolean   @default(false)
+  
+  // Relations
+  apiKeys           ApiKey[]
+  subscriptions     Subscription[]
+  licenses          License[]
+  payouts           Payout[]
+  detections        Detection[]
+  auditLogs         AuditLog[]
+  webhooks          Webhook[]
+  sites             Site[]
+  refreshTokens     RefreshToken[]
+  invites           Invite[]
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@index([email])
+  @@index([status])
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  ENTERPRISE
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+// Invite System (Beta Phase)
+model Invite {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  email       String?
+  maxUses     Int       @default(1)
+  usedCount   Int       @default(0)
+  expiresAt   DateTime?
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  createdById String
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([code])
+}
+
+// API Keys for plugin authentication
+model ApiKey {
+  id          String    @id @default(cuid())
+  key         String    @unique
+  name        String
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  siteId      String?
+  site        Site?     @relation(fields: [siteId], references: [id])
+  
+  permissions String[]  @default(["read"])
+  rateLimit   Int       @default(1000)
+  
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([key])
+  @@index([userId])
+}
+
+// WordPress Sites Management
+model Site {
+  id          String    @id @default(cuid())
+  url         String    @unique
+  name        String
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  apiKeys     ApiKey[]
+  licenses    License[]
+  detections  Detection[]
+  
+  // Verification
+  verified    Boolean   @default(false)
+  verifyToken String?
+  
+  // Settings
+  settings    Json      @default("{}")
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([url])
+}
+
+// License Management
+model License {
+  id          String    @id @default(cuid())
+  key         String    @unique
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  siteId      String?
+  site        Site?     @relation(fields: [siteId], references: [id])
+  
+  type        LicenseType
+  status      LicenseStatus @default(ACTIVE)
+  
+  maxSites    Int       @default(1)
+  activeSites Int       @default(0)
+  
+  features    String[]  @default([])
+  metadata    Json?
+  
+  validFrom   DateTime  @default(now())
+  validUntil  DateTime?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([key])
+  @@index([userId])
+  @@index([status])
+}
+
+enum LicenseType {
+  TRIAL
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum LicenseStatus {
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+  REVOKED
+}
+
+// Subscription Management
+model Subscription {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  stripeCustomerId  String?
+  stripeSubId       String?   @unique
+  stripePriceId     String?
+  
+  plan              String
+  status            SubscriptionStatus
+  
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean   @default(false)
+  
+  trialStart        DateTime?
+  trialEnd          DateTime?
+  
+  metadata          Json?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([stripeSubId])
+  @@index([status])
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  INCOMPLETE
+}
+
+// Bot Detection Logs
+model Detection {
+  id          String    @id @default(cuid())
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  siteId      String?
+  site        Site?     @relation(fields: [siteId], references: [id])
+  
+  // Request Info
+  ip          String
+  userAgent   String
+  method      String
+  path        String
+  headers     Json
+  
+  // Detection Results
+  isBot       Boolean
+  botType     String?
+  confidence  Float
+  action      DetectionAction
+  
+  // Advanced Detection
+  tlsFingerprint String?
+  httpFingerprint String?
+  ipInfo      Json?
+  
+  // Response
+  blocked     Boolean   @default(false)
+  challenged  Boolean   @default(false)
+  allowed     Boolean   @default(false)
+  
+  timestamp   DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([siteId])
+  @@index([ip])
+  @@index([timestamp])
+  @@index([isBot])
+}
+
+enum DetectionAction {
+  ALLOW
+  BLOCK
+  CHALLENGE
+  MONITOR
+}
+
+// Payout Management
+model Payout {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  amount      Float
+  currency    String    @default("USD")
+  status      PayoutStatus
+  
+  method      String    // stripe, paypal, bank
+  destination String?   // account details
+  
+  processedAt DateTime?
+  failedAt    DateTime?
+  failureReason String?
+  
+  metadata    Json?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// Webhook Management
+model Webhook {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  url         String
+  events      String[]  // detection, subscription, payout, etc.
+  secret      String
+  
+  isActive    Boolean   @default(true)
+  
+  lastTriggered DateTime?
+  failureCount Int      @default(0)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([userId])
+}
+
+// Audit Logs
+model AuditLog {
+  id          String    @id @default(cuid())
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  
+  action      String
+  entity      String
+  entityId    String?
+  
+  oldValue    Json?
+  newValue    Json?
+  
+  ip          String?
+  userAgent   String?
+  
+  timestamp   DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([entity])
+  @@index([timestamp])
+}
+
+// Refresh Token Management
+model RefreshToken {
+  id          String    @id @default(cuid())
+  token       String    @unique
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  
+  @@index([token])
+  @@index([userId])
+}
+
+// Analytics Cache
+model AnalyticsCache {
+  id          String    @id @default(cuid())
+  key         String    @unique
+  data        Json
+  expiresAt   DateTime
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([key])
+  @@index([expiresAt])
+}

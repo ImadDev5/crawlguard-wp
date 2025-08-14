@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.5/phpunit.xsd"
+    bootstrap="bootstrap.php"
+    colors="true"
+    verbose="true"
+    stopOnFailure="false"
+    stopOnError="false"
+    stopOnIncomplete="false"
+    stopOnSkipped="false"
+    convertErrorsToExceptions="true"
+    convertNoticesToExceptions="true"
+    convertWarningsToExceptions="true"
+    processIsolation="false"
+    backupGlobals="false"
+    backupStaticAttributes="false"
+>
+    <!-- Test Suites -->
+    <testsuites>
+        <testsuite name="Unit Tests">
+            <directory>./unit</directory>
+        </testsuite>
+        <testsuite name="Integration Tests">
+            <directory>./integration</directory>
+        </testsuite>
+        <testsuite name="WordPress Plugin Tests">
+            <directory>./wp-plugin</directory>
+        </testsuite>
+        <testsuite name="API Tests">
+            <directory>./api</directory>
+        </testsuite>
+        <testsuite name="Database Tests">
+            <directory>./database</directory>
+        </testsuite>
+    </testsuites>
+
+    <!-- Code Coverage -->
+    <coverage processUncoveredFiles="true">
+        <include>
+            <directory suffix=".php">../includes</directory>
+            <directory suffix=".php">../admin</directory>
+            <directory suffix=".php">../public</directory>
+        </include>
+        <exclude>
+            <directory>../vendor</directory>
+            <directory>../node_modules</directory>
+            <directory>../tests</directory>
+        </exclude>
+        <report>
+            <html outputDirectory="./coverage/phpunit/html"/>
+            <text outputFile="./coverage/phpunit/coverage.txt"/>
+            <clover outputFile="./coverage/phpunit/clover.xml"/>
+        </report>
+    </coverage>
+
+    <!-- PHP Settings -->
+    <php>
+        <!-- WordPress Test Environment -->
+        <const name="WP_TESTS_DOMAIN" value="paypercrawl.test"/>
+        <const name="WP_TESTS_EMAIL" value="admin@paypercrawl.test"/>
+        <const name="WP_TESTS_TITLE" value="CrawlGuard Test Site"/>
+        <const name="WP_PHP_BINARY" value="php"/>
+        <const name="CRAWLGUARD_TEST_MODE" value="true"/>
+        
+        <!-- Database Configuration from .env -->
+        <env name="TEST_DB_HOST" value="localhost"/>
+        <env name="TEST_DB_NAME" value="crawlguard_test"/>
+        <env name="TEST_DB_USER" value="test_user"/>
+        <env name="TEST_DB_PASS" value="test_password"/>
+        
+        <!-- API Configuration -->
+        <env name="TEST_API_URL" value="https://api.paypercrawl.tech/v1"/>
+        <env name="TEST_API_KEY" value="test_api_key_12345"/>
+        
+        <!-- Feature Flags for Testing -->
+        <env name="FEATURE_BOT_DETECTION" value="true"/>
+        <env name="FEATURE_MONETIZATION" value="true"/>
+        <env name="FEATURE_ANALYTICS" value="true"/>
+        
+        <!-- Error Reporting -->
+        <ini name="error_reporting" value="-1"/>
+        <ini name="display_errors" value="On"/>
+        <ini name="display_startup_errors" value="On"/>
+        <ini name="log_errors" value="On"/>
+        
+        <!-- Memory and Time Limits -->
+        <ini name="memory_limit" value="256M"/>
+        <ini name="max_execution_time" value="0"/>
+    </php>
+
+    <!-- Logging Configuration -->
+    <logging>
+        <testdoxHtml outputFile="./logs/testdox.html"/>
+        <testdoxText outputFile="./logs/testdox.txt"/>
+        <junit outputFile="./logs/junit.xml"/>
+        <teamcity outputFile="./logs/teamcity.txt"/>
+    </logging>
+</phpunit>

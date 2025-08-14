@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # Database Services
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: arbiter_platform
+      POSTGRES_USER: arbiter
+      POSTGRES_PASSWORD: arbiter123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arbiter"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./arbiter-platform/api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://arbiter:arbiter123@postgres:5432/arbiter_platform
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./arbiter-platform/api-gateway:/app
+      - /app/node_modules
+
+  # Microservices
+  bot-detection:
+    build:
+      context: ./arbiter-platform/services/bot-detection
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    volumes:
+      - ./arbiter-platform/services/bot-detection:/app
+      - /app/node_modules
+
+  pricing-engine:
+    build:
+      context: ./arbiter-platform/services/pricing-engine
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+    volumes:
+      - ./arbiter-platform/services/pricing-engine:/app
+      - /app/node_modules
+
+  # Frontend
+  frontend:
+    build:
+      context: ./arbiter-platform/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./arbiter-platform/frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api-gateway
+
+volumes:
+  postgres_data:
+  redis_data:

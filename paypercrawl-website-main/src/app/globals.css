@@ -1,0 +1,705 @@
+@import "tailwindcss";
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 222.2 47.4% 11.2%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 222.2 84% 4.9%;
+  --radius: 0.5rem;
+  --chart-1: 12 76% 61%;
+  --chart-2: 173 58% 39%;
+  --chart-3: 197 37% 24%;
+  --chart-4: 43 74% 66%;
+  --chart-5: 27 87% 67%;
+}
+
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 6.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 210 40% 98%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 217.2 32.6% 19.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 19.5%;
+  --muted-foreground: 215 20.2% 70.1%;
+  --accent: 217.2 32.6% 19.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 45.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 25.5%;
+  --input: 217.2 32.6% 19.5%;
+  --ring: 212.7 26.8% 83.9%;
+  --chart-1: 220 70% 50%;
+  --chart-2: 160 60% 45%;
+  --chart-3: 30 80% 55%;
+  --chart-4: 280 70% 50%;
+  --chart-5: 340 75% 55%;
+}
+
+/* GitHub Dark Dimmed theme: Enhanced with better visual appeal */
+.dim {
+  /* Base surfaces using GitHub Dark Dimmed specifications with enhanced contrast */
+  --background: 220 13% 8%; /* #141618 - darker main background for better contrast */
+  --foreground: 220 14% 73%; /* #b1bac4 - lighter primary text for better readability */
+  --card: 217 19% 11%; /* #1a1f24 - slightly darker elevated surfaces */
+  --card-foreground: 220 14% 73%; /* #b1bac4 - text on cards */
+  --popover: 217 19% 11%; /* #1a1f24 - popover background */
+  --popover-foreground: 220 14% 73%; /* #b1bac4 - popover text */
+
+  /* Primary colors with enhanced GitHub blue accent */
+  --primary: 217 91% 65%; /* #4184e4 - brighter GitHub blue for better visibility */
+  --primary-foreground: 220 13% 8%; /* #141618 - text on primary */
+
+  /* Secondary and muted colors with better contrast */
+  --secondary: 213 13% 17%; /* #272c32 - lighter secondary surfaces for better visibility */
+  --secondary-foreground: 220 14% 73%; /* #b1bac4 - secondary text */
+  --muted: 213 13% 15%; /* #24292e - enhanced muted backgrounds */
+  --muted-foreground: 217 10% 55%; /* #7d8590 - enhanced muted text readability */
+
+  /* Accent colors with improved contrast */
+  --accent: 213 13% 17%; /* #272c32 - accent background */
+  --accent-foreground: 220 14% 73%; /* #b1bac4 - accent text */
+
+  /* Semantic colors with GitHub palette enhancements */
+  --destructive: 0 68% 42%; /* #da3633 - brighter GitHub red for better visibility */
+  --destructive-foreground: 220 14% 95%; /* #f0f6fc - high contrast text */
+
+  /* UI element colors with enhanced visibility */
+  --border: 217 19% 20%; /* #30363d - lighter borders for better definition */
+  --input: 217 19% 15%; /* #21262d - input backgrounds with better contrast */
+  --ring: 217 91% 65%; /* #4184e4 - enhanced focus rings */
+
+  /* Chart colors with enhanced GitHub palette */
+  --chart-1: 217 91% 65%; /* Enhanced GitHub blue */
+  --chart-2: 142 70% 52%; /* Enhanced GitHub green */
+  --chart-3: 45 92% 58%; /* Enhanced GitHub yellow */
+  --chart-4: 262 83% 62%; /* Enhanced GitHub purple */
+  --chart-5: 16 88% 60%; /* Enhanced GitHub orange */
+
+  /* Enhanced gradients for dim theme */
+  --gradient-primary: linear-gradient(
+    135deg,
+    hsl(217 91% 65%) 0%,
+    hsl(217 91% 55%) 100%
+  );
+  --gradient-secondary: linear-gradient(
+    135deg,
+    hsl(213 13% 17%) 0%,
+    hsl(213 13% 12%) 100%
+  );
+
+  /* Enhanced shadows for dim theme */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+  --shadow-xl:
+    0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.4);
+}
+
+/* Base styles for proper layout and typography */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    "Noto Sans",
+    sans-serif;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  -moz-tab-size: 4;
+  tab-size: 4;
+}
+
+/* Smooth transitions for theme changes */
+*,
+*::before,
+*::after {
+  transition:
+    background-color 0.2s ease-in-out,
+    border-color 0.2s ease-in-out,
+    color 0.2s ease-in-out,
+    fill 0.2s ease-in-out,
+    stroke 0.2s ease-in-out,
+    box-shadow 0.2s ease-in-out;
+}
+
+/* Enhanced Alert component styles for better visibility across themes */
+[data-slot="alert"] {
+  backdrop-filter: blur(8px);
+  background-color: hsl(var(--card) / 0.8);
+  border: 1px solid hsl(var(--border) / 0.8);
+}
+
+/* Enhanced focus styles for dim theme */
+.dim *:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px hsl(var(--ring) / 0.3);
+}
+
+/* Enhanced selection styles */
+::selection {
+  background-color: hsl(var(--primary) / 0.3);
+  color: hsl(var(--foreground));
+}
+
+.dim ::selection {
+  background-color: hsl(var(--primary) / 0.4);
+  color: hsl(var(--foreground));
+}
+
+/* ===== ENHANCED UI COMPONENTS WITH CONSISTENT BORDERS ===== */
+
+/* Button enhancements for all themes */
+button,
+[role="button"] {
+  border: 1px solid hsl(var(--border) / 0.5);
+  transition: all 0.2s ease-in-out;
+}
+
+button:hover,
+[role="button"]:hover {
+  border-color: hsl(var(--border));
+  box-shadow: 0 2px 4px hsl(var(--foreground) / 0.1);
+}
+
+/* Dark theme button enhancements */
+.dark button,
+.dark [role="button"] {
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+}
+
+.dark button:hover,
+.dark [role="button"]:hover {
+  border-color: hsl(var(--border) / 1.5);
+  box-shadow: 0 4px 8px rgb(0 0 0 / 0.4);
+  transform: translateY(-1px);
+}
+
+/* Card enhancements for all themes */
+[data-slot="card"],
+.card {
+  border: 1px solid hsl(var(--border) / 0.8);
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
+}
+
+/* Dark theme card enhancements */
+.dark [data-slot="card"],
+.dark .card {
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.4);
+  background: hsl(var(--card));
+}
+
+.dark [data-slot="card"]:hover,
+.dark .card:hover {
+  border-color: hsl(var(--border) / 1.3);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.5);
+}
+
+/* Input field enhancements for all themes */
+input,
+textarea,
+select {
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--input));
+  transition: all 0.2s ease-in-out;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: hsl(var(--ring));
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+}
+
+/* Dark theme input enhancements */
+.dark input,
+.dark textarea,
+.dark select {
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--input));
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.3);
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: hsl(var(--ring));
+  box-shadow:
+    0 0 0 2px hsl(var(--ring) / 0.3),
+    inset 0 1px 3px rgb(0 0 0 / 0.2);
+}
+
+/* Alert component enhancements */
+[data-slot="alert"] {
+  border: 1px solid hsl(var(--border) / 0.8);
+  backdrop-filter: blur(8px);
+  background-color: hsl(var(--card) / 0.9);
+}
+
+.dark [data-slot="alert"] {
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--card) / 0.95);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.4);
+}
+
+/* Sheet/Modal enhancements */
+[data-slot="sheet-content"],
+.modal {
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 8px 32px hsl(var(--foreground) / 0.15);
+}
+
+.dark [data-slot="sheet-content"],
+.dark .modal {
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 12px 48px rgb(0 0 0 / 0.6);
+}
+
+/* Dialog close button positioning fix */
+[data-slot="dialog-close"] {
+  position: absolute !important;
+  top: 1rem !important;
+  right: 1rem !important;
+  z-index: 10;
+}
+
+/* Navigation enhancements */
+nav {
+  border-bottom: 1px solid hsl(var(--border) / 0.6);
+}
+
+.dark nav {
+  border-bottom: 1px solid hsl(var(--border));
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.3);
+}
+
+/* Enhanced scrollbar styles for dim theme */
+.dim ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dim ::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+  border-radius: 4px;
+}
+
+.dim ::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+
+.dim ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.6);
+}
+
+/* Advanced dim theme enhancements */
+.dim {
+  /* Enhanced glass morphism effects */
+  --glass-bg: hsl(var(--background) / 0.7);
+  --glass-border: hsl(var(--border) / 0.3);
+  --glass-shadow: 0 8px 32px 0 rgb(0 0 0 / 0.3);
+
+  /* Enhanced glow effects */
+  --glow-primary: 0 0 20px hsl(var(--primary) / 0.3);
+  --glow-secondary: 0 0 15px hsl(var(--secondary) / 0.2);
+}
+
+/* Additional enhancements for dim theme */
+.dim {
+  /* Enhanced text rendering */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ===== RING LOADER ANIMATION SYSTEM ===== */
+
+/* Ring Loader Animation */
+@keyframes ring-rotate {
+  from {
+    stroke-dashoffset: var(--perimeter);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.ring-loader-svg {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.ring-loader-path {
+  animation: ring-rotate var(--animation-duration, 3s) linear infinite;
+  will-change: stroke-dashoffset;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  stroke: hsl(var(--primary));
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Enhanced effects for dark theme */
+.dark .ring-loader-path {
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ===== ENHANCED STATS SECTION STYLING ===== */
+
+/* Stats Section Enhancements */
+.stats-card {
+  position: relative;
+  overflow: hidden;
+  border: 2px solid hsl(var(--border) / 0.4);
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--card) / 0.95) 0%,
+    hsl(var(--card) / 0.85) 100%
+  );
+  box-shadow:
+    0 4px 6px -1px hsl(var(--foreground) / 0.1),
+    0 2px 4px -1px hsl(var(--foreground) / 0.06),
+    inset 0 1px 0 hsl(var(--foreground) / 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stats-card:hover {
+  border: 2px solid hsl(var(--primary) / 0.6);
+  box-shadow:
+    0 8px 25px -5px hsl(var(--primary) / 0.15),
+    0 4px 6px -2px hsl(var(--primary) / 0.1),
+    inset 0 1px 0 hsl(var(--foreground) / 0.1),
+    0 0 0 1px hsl(var(--primary) / 0.3);
+}
+
+/* Dark theme stats card enhancements */
+.dark .stats-card {
+  border: 2px solid hsl(var(--border) / 0.6);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--card)) 0%,
+    hsl(var(--card) / 0.9) 100%
+  );
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.3),
+    0 2px 4px -1px rgb(0 0 0 / 0.2),
+    inset 0 1px 0 hsl(var(--foreground) / 0.1);
+}
+
+.dark .stats-card:hover {
+  border: 2px solid hsl(var(--primary) / 0.8);
+  box-shadow:
+    0 12px 35px -8px hsl(var(--primary) / 0.3),
+    0 6px 12px -4px hsl(var(--primary) / 0.2),
+    inset 0 1px 0 hsl(var(--foreground) / 0.1),
+    0 0 0 1px hsl(var(--primary) / 0.4);
+}
+
+.stats-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(var(--primary) / 0.1),
+    transparent
+  );
+  transition: left 0.6s ease;
+}
+
+.stats-card:hover::before {
+  left: 100%;
+}
+
+/* Enhanced stats number styling */
+.stats-number {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary)) 0%,
+    hsl(var(--primary) / 0.8) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 4px hsl(var(--primary) / 0.2);
+  position: relative;
+}
+
+.stats-number::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: inherit;
+  background-clip: text;
+  -webkit-background-clip: text;
+  filter: blur(8px);
+  opacity: 0.3;
+  z-index: -1;
+}
+
+/* Pulse effect for stats numbers */
+@keyframes stats-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.stats-number:hover {
+  animation: stats-pulse 0.6s ease-in-out;
+}
+
+/* ===== ENHANCED UI COMPONENTS WITH BORDERS ===== */
+
+/* Enhanced Badge and Banner Components */
+.beta-badge,
+.banner-badge {
+  border: 2px solid hsl(var(--primary) / 0.4);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.1) 0%,
+    hsl(var(--primary) / 0.05) 100%
+  );
+  box-shadow:
+    0 4px 6px -1px hsl(var(--primary) / 0.15),
+    0 2px 4px -1px hsl(var(--primary) / 0.1),
+    inset 0 1px 0 hsl(var(--primary) / 0.2);
+  backdrop-filter: blur(8px);
+  position: relative;
+}
+
+.beta-badge::after,
+.banner-badge::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.6) 0%,
+    hsl(var(--primary) / 0.3) 50%,
+    hsl(var(--primary) / 0.6) 100%
+  );
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: xor;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  z-index: -1;
+}
+
+/* Dark theme enhancements for badges */
+.dark .beta-badge,
+.dark .banner-badge {
+  border: 2px solid hsl(var(--primary) / 0.6);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.15) 0%,
+    hsl(var(--primary) / 0.08) 100%
+  );
+  box-shadow:
+    0 8px 25px -5px hsl(var(--primary) / 0.3),
+    0 4px 6px -2px hsl(var(--primary) / 0.2),
+    inset 0 1px 0 hsl(var(--primary) / 0.3);
+}
+
+/* Enhanced Component Borders */
+button,
+[role="button"] {
+  border: 2px solid hsl(var(--border) / 0.5);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--background)) 0%,
+    hsl(var(--background) / 0.95) 100%
+  );
+  box-shadow:
+    0 2px 4px -1px hsl(var(--foreground) / 0.1),
+    0 1px 2px -1px hsl(var(--foreground) / 0.06);
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  overflow: hidden;
+}
+
+button::before,
+[role="button"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.1) 0%,
+    transparent 50%,
+    hsl(var(--primary) / 0.1) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+button:hover,
+[role="button"]:hover {
+  border-color: hsl(var(--primary) / 0.6);
+  box-shadow:
+    0 8px 25px -5px hsl(var(--primary) / 0.15),
+    0 4px 6px -2px hsl(var(--primary) / 0.1),
+    0 0 0 1px hsl(var(--primary) / 0.3);
+  transform: translateY(-1px);
+}
+
+button:hover::before,
+[role="button"]:hover::before {
+  opacity: 1;
+}
+
+/* Dark theme button enhancements */
+.dark button,
+.dark [role="button"] {
+  border: 2px solid hsl(var(--border));
+  background: linear-gradient(
+    135deg,
+    hsl(var(--background)) 0%,
+    hsl(var(--background) / 0.9) 100%
+  );
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.3),
+    0 2px 4px -1px rgb(0 0 0 / 0.2);
+}
+
+.dark button:hover,
+.dark [role="button"]:hover {
+  border-color: hsl(var(--primary) / 0.8);
+  box-shadow:
+    0 12px 35px -8px hsl(var(--primary) / 0.3),
+    0 6px 12px -4px hsl(var(--primary) / 0.2),
+    0 0 0 1px hsl(var(--primary) / 0.4);
+  transform: translateY(-2px);
+}
+
+/* Card enhancements for all themes */
+[data-slot="card"],
+.card {
+  border: 2px solid hsl(var(--border) / 0.6);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--card)) 0%,
+    hsl(var(--card) / 0.95) 100%
+  );
+  box-shadow:
+    0 4px 6px -1px hsl(var(--foreground) / 0.1),
+    0 2px 4px -1px hsl(var(--foreground) / 0.06),
+    inset 0 1px 0 hsl(var(--foreground) / 0.05);
+  position: relative;
+}
+
+[data-slot="card"]::before,
+.card::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--border) / 0.6) 0%,
+    hsl(var(--border) / 0.3) 50%,
+    hsl(var(--border) / 0.6) 100%
+  );
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: xor;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+[data-slot="card"]:hover::before,
+.card:hover::before {
+  opacity: 1;
+}
+
+/* Dark theme card enhancements */
+.dark [data-slot="card"],
+.dark .card {
+  border: 2px solid hsl(var(--border));
+  background: linear-gradient(
+    135deg,
+    hsl(var(--card)) 0%,
+    hsl(var(--card) / 0.9) 100%
+  );
+  box-shadow:
+    0 8px 25px -5px rgb(0 0 0 / 0.4),
+    0 4px 6px -2px rgb(0 0 0 / 0.3),
+    inset 0 1px 0 hsl(var(--foreground) / 0.1);
+}
+
+.dark [data-slot="card"]:hover,
+.dark .card:hover {
+  border-color: hsl(var(--primary) / 0.6);
+  box-shadow:
+    0 12px 35px -8px hsl(var(--primary) / 0.3),
+    0 6px 12px -4px hsl(var(--primary) / 0.2),
+    inset 0 1px 0 hsl(var(--foreground) / 0.1),
+    0 0 0 1px hsl(var(--primary) / 0.4);
+}

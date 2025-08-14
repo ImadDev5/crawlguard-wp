@@ -1,0 +1,58 @@
+{
+  "name": "arbiter-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Production-ready marketplace connecting content creators with AI companies",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "type-check": "turbo run type-check",
+    "clean": "turbo run clean",
+    "db:generate": "turbo run db:generate",
+    "db:push": "turbo run db:push",
+    "db:migrate": "turbo run db:migrate",
+    "db:studio": "turbo run db:studio",
+    "check-credentials": "node scripts/check-credentials.js",
+    "setup": "node scripts/setup-wizard.js",
+    "setup-check": "npm run setup && npm run check-credentials"
+  },
+  "devDependencies": {
+    "@turbo/gen": "^1.10.7",
+    "@types/node": "^20.4.2",
+    "dotenv": "^16.6.1",
+    "eslint": "^8.45.0",
+    "prettier": "^3.0.0",
+    "turbo": "^1.10.7",
+    "typescript": "^5.1.6"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ImadDev5/arbiter-platform.git"
+  },
+  "keywords": [
+    "marketplace",
+    "ai",
+    "content",
+    "licensing",
+    "creators",
+    "machine-learning",
+    "training-data"
+  ],
+  "author": "Arbiter Platform Team",
+  "license": "MIT",
+  "main": "index.js",
+  "bugs": {
+    "url": "https://github.com/ImadDev5/arbiter-platform/issues"
+  },
+  "homepage": "https://github.com/ImadDev5/arbiter-platform#readme"
+}

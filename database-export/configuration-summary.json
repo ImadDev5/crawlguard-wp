@@ -1,0 +1,208 @@
+{
+  "export_date": "2025-08-02T00:35:45.458Z",
+  "database_info": {
+    "host": "ep-steep-resonance-adkp2zt6-pooler.c-2.us-east-1.aws.neon.tech",
+    "database": "neondb",
+    "user": "neondb_owner"
+  },
+  "tables_exported": 15,
+  "total_rows": 100,
+  "system_config": {
+    "api_base_url": {
+      "value": "https://paypercrawl.tech/api",
+      "category": "api"
+    },
+    "api_version": {
+      "value": "v1",
+      "category": "api"
+    },
+    "default_pricing": {
+      "value": {
+        "currency": "USD",
+        "per_request": 0.001
+      },
+      "category": "billing"
+    },
+    "rate_limits": {
+      "value": {
+        "default": 1000,
+        "premium": 5000,
+        "enterprise": 10000
+      },
+      "category": "security"
+    },
+    "allowed_origins": {
+      "value": [
+        "https://paypercrawl.tech",
+        "https://creativeinteriorsstudio.com"
+      ],
+      "category": "security"
+    },
+    "webhook_retry_config": {
+      "value": {
+        "retry_delay": 300,
+        "max_attempts": 3
+      },
+      "category": "webhooks"
+    },
+    "bot_detection_config": {
+      "value": {
+        "enabled_types": [
+          "ChatGPT",
+          "Claude",
+          "Gemini"
+        ],
+        "confidence_threshold": 80
+      },
+      "category": "detection"
+    },
+    "payment_config": {
+      "value": {
+        "stripe_fee": 0.029,
+        "platform_fee": 0.05
+      },
+      "category": "billing"
+    }
+  },
+  "sites_config": [
+    {
+      "site_url": "https://darkslategrey-grouse-900069.hostingersite.com",
+      "api_key": "SET",
+      "subscription_tier": "pro",
+      "monetization_enabled": true,
+      "pricing_per_request": "0.001000",
+      "allowed_bots": [
+        "googlebot",
+        "bingbot"
+      ],
+      "stripe_account_id": null
+    },
+    {
+      "site_url": "https://creativeinteriorsstudio.com",
+      "api_key": "SET",
+      "subscription_tier": "free",
+      "monetization_enabled": false,
+      "pricing_per_request": "0.001000",
+      "allowed_bots": [],
+      "stripe_account_id": null
+    },
+    {
+      "site_url": "https://blogging-website-s.netlify.app",
+      "api_key": "SET",
+      "subscription_tier": "free",
+      "monetization_enabled": false,
+      "pricing_per_request": "0.001000",
+      "allowed_bots": [],
+      "stripe_account_id": null
+    }
+  ],
+  "headers_config": [
+    {
+      "site_url": "https://darkslategrey-grouse-900069.hostingersite.com",
+      "header_name": "Authorization",
+      "header_value": "Bearer ***",
+      "header_type": "api"
+    },
+    {
+      "site_url": "https://creativeinteriorsstudio.com",
+      "header_name": "Authorization",
+      "header_value": "Bearer ***",
+      "header_type": "api"
+    },
+    {
+      "site_url": "https://blogging-website-s.netlify.app",
+      "header_name": "Authorization",
+      "header_value": "Bearer ***",
+      "header_type": "api"
+    },
+    {
+      "site_url": "https://darkslategrey-grouse-900069.hostingersite.com",
+      "header_name": "Content-Type",
+      "header_value": "application/json",
+      "header_type": "api"
+    },
+    {
+      "site_url": "https://creativeinteriorsstudio.com",
+      "header_name": "Content-Type",
+      "header_value": "application/json",
+      "header_type": "api"
+    },
+    {
+      "site_url": "https://blogging-website-s.netlify.app",
+      "header_name": "Content-Type",
+      "header_value": "application/json",
+      "header_type": "api"
+    },
+    {
+      "site_url": "https://darkslategrey-grouse-900069.hostingersite.com",
+      "header_name": "User-Agent",
+      "header_value": "PayPerCrawl-Plugin/1.0",
+      "header_type": "api"
+    },
+    {
+      "site_url": "https://creativeinteriorsstudio.com",
+      "header_name": "User-Agent",
+      "header_value": "PayPerCrawl-Plugin/1.0",
+      "header_type": "api"
+    },
+    {
+      "site_url": "https://blogging-website-s.netlify.app",
+      "header_name": "User-Agent",
+      "header_value": "PayPerCrawl-Plugin/1.0",
+      "header_type": "api"
+    }
+  ],
+  "plugin_config": [
+    {
+      "site_url": "https://darkslategrey-grouse-900069.hostingersite.com",
+      "config_key": "bot_detection_enabled",
+      "config_value": true,
+      "config_type": "feature"
+    },
+    {
+      "site_url": "https://creativeinteriorsstudio.com",
+      "config_key": "bot_detection_enabled",
+      "config_value": true,
+      "config_type": "feature"
+    },
+    {
+      "site_url": "https://blogging-website-s.netlify.app",
+      "config_key": "bot_detection_enabled",
+      "config_value": true,
+      "config_type": "feature"
+    },
+    {
+      "site_url": "https://darkslategrey-grouse-900069.hostingersite.com",
+      "config_key": "monetization_settings",
+      "config_value": {
+        "enabled": true,
+        "allowed_bots": [
+          "googlebot",
+          "bingbot"
+        ],
+        "pricing_per_request": 0.001
+      },
+      "config_type": "billing"
+    },
+    {
+      "site_url": "https://creativeinteriorsstudio.com",
+      "config_key": "monetization_settings",
+      "config_value": {
+        "enabled": false,
+        "allowed_bots": [],
+        "pricing_per_request": 0.001
+      },
+      "config_type": "billing"
+    },
+    {
+      "site_url": "https://blogging-website-s.netlify.app",
+      "config_key": "monetization_settings",
+      "config_value": {
+        "enabled": false,
+        "allowed_bots": [],
+        "pricing_per_request": 0.001
+      },
+      "config_type": "billing"
+    }
+  ]
+}

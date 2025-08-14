@@ -1,0 +1,267 @@
+/**
+ * CrawlGuard Admin Styles
+ */
+
+.crawlguard-dashboard {
+    max-width: 1200px;
+    margin: 20px 0;
+}
+
+.crawlguard-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.crawlguard-stat-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.crawlguard-stat-card h3 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    color: #646970;
+    font-weight: 600;
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 600;
+    color: #1d2327;
+    margin-bottom: 5px;
+}
+
+.stat-value.lost-revenue {
+    color: #d63638;
+}
+
+.stat-change {
+    font-size: 12px;
+    color: #646970;
+}
+
+.crawlguard-charts {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.chart-container {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.chart-container h3 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    color: #1d2327;
+}
+
+#revenue-chart {
+    width: 100%;
+    height: 200px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+#bot-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.bot-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.bot-item:last-child {
+    border-bottom: none;
+}
+
+.bot-name {
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.bot-visits {
+    color: #646970;
+    font-size: 12px;
+}
+
+.bot-revenue {
+    color: #00a32a;
+    font-weight: 600;
+}
+
+.crawlguard-recent-activity {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.crawlguard-recent-activity h3 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    color: #1d2327;
+}
+
+.activity-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.activity-item {
+    display: grid;
+    grid-template-columns: 120px 150px 1fr 80px;
+    gap: 15px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f1;
+    align-items: center;
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.activity-time {
+    font-size: 12px;
+    color: #646970;
+}
+
+.activity-bot {
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.activity-page {
+    color: #646970;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.activity-revenue {
+    text-align: right;
+    font-weight: 600;
+    color: #d63638;
+}
+
+.activity-revenue.positive {
+    color: #00a32a;
+}
+
+.crawlguard-loading {
+    text-align: center;
+    padding: 40px;
+    color: #646970;
+}
+
+.crawlguard-error {
+    text-align: center;
+    padding: 40px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+}
+
+.crawlguard-error h3 {
+    color: #d63638;
+    margin-bottom: 10px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .crawlguard-stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .crawlguard-charts {
+        grid-template-columns: 1fr;
+    }
+    
+    .activity-item {
+        grid-template-columns: 1fr;
+        gap: 5px;
+    }
+    
+    .activity-time,
+    .activity-bot,
+    .activity-page,
+    .activity-revenue {
+        text-align: left;
+    }
+}
+
+/* Settings page styles */
+.crawlguard-settings {
+    max-width: 800px;
+}
+
+.crawlguard-settings .form-table th {
+    width: 200px;
+}
+
+.crawlguard-api-key-status {
+    margin-left: 10px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.crawlguard-api-key-status.valid {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+
+.crawlguard-api-key-status.invalid {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Upgrade prompts */
+.crawlguard-upgrade-prompt {
+    background: linear-gradient(135deg, #2271b1, #135e96);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+    text-align: center;
+}
+
+.crawlguard-upgrade-prompt h3 {
+    color: white;
+    margin-bottom: 10px;
+}
+
+.crawlguard-upgrade-button {
+    background: white;
+    color: #2271b1;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+    margin-top: 10px;
+}
+
+.crawlguard-upgrade-button:hover {
+    background: #f0f0f1;
+    color: #135e96;
+}

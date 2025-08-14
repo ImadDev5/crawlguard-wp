@@ -1,0 +1,119 @@
+{
+  "tests": [
+    {
+      "name": "Basic Connection",
+      "status": "pass",
+      "details": "Connected to neondb as neondb_owner",
+      "metadata": {
+        "server_time": "2025-08-07T20:50:32.132Z",
+        "pg_version": "PostgreSQL 17.5 on aarch64-unknown-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit",
+        "database": "neondb",
+        "user": "neondb_owner"
+      },
+      "timestamp": "2025-08-07T20:50:32.230Z"
+    },
+    {
+      "name": "SSL/TLS Configuration",
+      "status": "pass",
+      "details": "SSL enforced with channel binding (most secure)",
+      "metadata": {
+        "sslmode": "require",
+        "channel_binding": "require"
+      },
+      "timestamp": "2025-08-07T20:50:34.913Z"
+    },
+    {
+      "name": "SSL Enforcement",
+      "status": "pass",
+      "details": "Non-SSL connections properly rejected",
+      "metadata": {},
+      "timestamp": "2025-08-07T20:50:36.062Z"
+    },
+    {
+      "name": "Schema Detection",
+      "status": "pass",
+      "details": "Found 1 user schema(s)",
+      "metadata": {
+        "schemas": [
+          "public"
+        ]
+      },
+      "timestamp": "2025-08-07T20:50:39.066Z"
+    },
+    {
+      "name": "Table Structure",
+      "status": "pass",
+      "details": "10 tables in public schema",
+      "metadata": {},
+      "timestamp": "2025-08-07T20:50:40.158Z"
+    },
+    {
+      "name": "CRUD Operations",
+      "status": "pass",
+      "details": "All operations successful (avg: 340.60ms)",
+      "metadata": {
+        "operations": [
+          {
+            "op": "CREATE TABLE",
+            "time": 408
+          },
+          {
+            "op": "INSERT",
+            "time": 334
+          },
+          {
+            "op": "SELECT",
+            "time": 315
+          },
+          {
+            "op": "UPDATE",
+            "time": 322
+          },
+          {
+            "op": "DELETE",
+            "time": 324
+          }
+        ]
+      },
+      "timestamp": "2025-08-07T20:50:44.976Z"
+    },
+    {
+      "name": "Connection Pooling",
+      "status": "pass",
+      "details": "20/20 queries successful, 1 unique connections",
+      "metadata": {
+        "total_queries": 20,
+        "successful": 20,
+        "unique_connections": 1,
+        "pool_efficiency": "5.0%"
+      },
+      "timestamp": "2025-08-07T20:50:48.086Z"
+    },
+    {
+      "name": "Timeout Configuration",
+      "status": "pass",
+      "details": "Timeout set to 30000ms, queries executing normally",
+      "metadata": {
+        "timeout_ms": 30000,
+        "fast_query_ms": 310,
+        "medium_query_ms": 2315
+      },
+      "timestamp": "2025-08-07T20:50:53.161Z"
+    },
+    {
+      "name": "Database Permissions",
+      "status": "pass",
+      "details": "User neondb_owner has all required permissions",
+      "metadata": {
+        "current_user": "neondb_owner",
+        "can_create": true,
+        "can_connect": true,
+        "can_temp": true,
+        "is_superuser": false
+      },
+      "timestamp": "2025-08-07T20:50:56.217Z"
+    }
+  ],
+  "startTime": 1754599828800,
+  "endTime": 1754599856522
+}

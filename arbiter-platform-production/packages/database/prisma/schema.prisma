@@ -1,0 +1,524 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// USER MANAGEMENT
+// ==========================================
+
+enum UserRole {
+  CREATOR
+  AI_COMPANY
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  firstName String?
+  lastName  String?
+  avatar    String?
+  role      UserRole
+  status    UserStatus @default(PENDING_VERIFICATION)
+  
+  // Authentication
+  passwordHash String?
+  emailVerified DateTime?
+  emailVerificationToken String?
+  passwordResetToken String?
+  passwordResetExpires DateTime?
+  
+  // OAuth
+  googleId String?
+  githubId String?
+  linkedinId String?
+  
+  // Profile
+  bio String?
+  website String?
+  company String?
+  location String?
+  timezone String?
+  
+  // Preferences
+  emailNotifications Boolean @default(true)
+  marketingEmails Boolean @default(false)
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret String?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastLoginAt DateTime?
+  
+  // Relations
+  creatorProfile CreatorProfile?
+  aiCompanyProfile AICompanyProfile?
+  sessions Session[]
+  uploads Upload[]
+  licenses License[]
+  orders Order[]
+  notifications Notification[]
+  auditLogs AuditLog[]
+  
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("sessions")
+}
+
+// ==========================================
+// CREATOR PROFILES
+// ==========================================
+
+model CreatorProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  
+  // Verification
+  isVerified Boolean @default(false)
+  verificationDocument String?
+  verificationStatus String?
+  
+  // Payment Info
+  stripeAccountId String?
+  paypalEmail String?
+  bankAccountVerified Boolean @default(false)
+  
+  // Stats
+  totalEarnings Decimal @default(0) @db.Decimal(10, 2)
+  totalUploads Int @default(0)
+  totalLicensesSold Int @default(0)
+  averageRating Decimal? @db.Decimal(3, 2)
+  
+  // Settings
+  autoApproveRequests Boolean @default(false)
+  defaultLicenseType String?
+  defaultPricing Json?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("creator_profiles")
+}
+
+// ==========================================
+// AI COMPANY PROFILES
+// ==========================================
+
+model AICompanyProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  
+  // Company Info
+  companyName String
+  companySize String?
+  industry String?
+  useCase String?
+  
+  // Verification
+  businessVerified Boolean @default(false)
+  businessDocument String?
+  taxId String?
+  
+  // Payment Info
+  stripeCustomerId String?
+  billingAddress Json?
+  paymentMethods Json[]
+  
+  // Stats
+  totalSpent Decimal @default(0) @db.Decimal(10, 2)
+  totalLicenses Int @default(0)
+  activeProjects Int @default(0)
+  apiCalls Int @default(0)
+  
+  // Limits
+  monthlySpendLimit Decimal? @db.Decimal(10, 2)
+  dailyApiLimit Int?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("ai_company_profiles")
+}
+
+// ==========================================
+// CONTENT MANAGEMENT
+// ==========================================
+
+enum ContentType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  DATASET
+  CODE
+  DOCUMENT
+  OTHER
+}
+
+enum ContentStatus {
+  UPLOADING
+  PROCESSING
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+model Upload {
+  id          String        @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  contentType ContentType
+  status      ContentStatus @default(UPLOADING)
+  
+  // File Info
+  originalFileName String
+  fileSize         Int
+  mimeType         String
+  fileUrl          String?
+  thumbnailUrl     String?
+  previewUrl       String?
+  
+  // Metadata
+  tags        String[]
+  categories  String[]
+  language    String?
+  resolution  String?
+  duration    Int? // in seconds for video/audio
+  wordCount   Int? // for text content
+  
+  // AI Analysis
+  aiTags          String[]
+  qualityScore    Decimal? @db.Decimal(3, 2)
+  similarityHash  String?
+  contentAnalysis Json?
+  
+  // Pricing
+  basePrice      Decimal @db.Decimal(10, 2)
+  licenseTypes   Json // Different license tiers and pricing
+  
+  // Stats
+  views          Int @default(0)
+  downloads      Int @default(0)
+  licensesSold   Int @default(0)
+  totalRevenue   Decimal @default(0) @db.Decimal(10, 2)
+  
+  // Flags
+  isFeatured     Boolean @default(false)
+  isExclusive    Boolean @default(false)
+  requiresReview Boolean @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licenses License[]
+  reviews  Review[]
+  
+  @@index([status])
+  @@index([contentType])
+  @@index([tags])
+  @@index([qualityScore])
+  @@map("uploads")
+}
+
+// ==========================================
+// LICENSING SYSTEM
+// ==========================================
+
+enum LicenseType {
+  PERSONAL
+  COMMERCIAL
+  RESEARCH
+  ENTERPRISE
+  EXCLUSIVE
+}
+
+enum LicenseStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  REVOKED
+  DISPUTED
+}
+
+model License {
+  id       String        @id @default(cuid())
+  uploadId String
+  userId   String // The buyer
+  type     LicenseType
+  status   LicenseStatus @default(PENDING)
+  
+  // Terms
+  price           Decimal @db.Decimal(10, 2)
+  usageRights     Json
+  restrictions    Json
+  expirationDate  DateTime?
+  maxUsage        Int? // Max number of uses/downloads
+  currentUsage    Int @default(0)
+  
+  // Legal
+  agreementText   String
+  agreementHash   String
+  signedAt        DateTime?
+  ipAddress       String?
+  
+  // Tracking
+  downloadToken   String? @unique
+  lastAccessedAt  DateTime?
+  accessCount     Int @default(0)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  upload Upload @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order  Order?
+  
+  @@index([status])
+  @@index([type])
+  @@index([expirationDate])
+  @@map("licenses")
+}
+
+// ==========================================
+// E-COMMERCE & PAYMENTS
+// ==========================================
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  DISPUTED
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  userId    String
+  licenseId String      @unique
+  status    OrderStatus @default(PENDING)
+  
+  // Payment
+  amount          Decimal @db.Decimal(10, 2)
+  currency        String @default("USD")
+  platformFee     Decimal @db.Decimal(10, 2)
+  creatorEarnings Decimal @db.Decimal(10, 2)
+  
+  // Stripe Integration
+  stripePaymentIntentId String?
+  stripeChargeId        String?
+  stripeInvoiceId       String?
+  
+  // Billing
+  billingAddress Json?
+  billingEmail   String?
+  
+  // Metadata
+  metadata Json?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  license License @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+// ==========================================
+// REVIEWS & RATINGS
+// ==========================================
+
+model Review {
+  id       String @id @default(cuid())
+  uploadId String
+  userId   String
+  
+  rating  Int    // 1-5 stars
+  comment String?
+  
+  // Flags
+  isVerifiedPurchase Boolean @default(false)
+  isHelpful          Int     @default(0)
+  isFlagged          Boolean @default(false)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  upload Upload @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  
+  @@unique([uploadId, userId])
+  @@index([rating])
+  @@map("reviews")
+}
+
+// ==========================================
+// NOTIFICATIONS & COMMUNICATION
+// ==========================================
+
+enum NotificationType {
+  ORDER_COMPLETED
+  LICENSE_GRANTED
+  UPLOAD_APPROVED
+  UPLOAD_REJECTED
+  PAYMENT_RECEIVED
+  REVIEW_RECEIVED
+  SYSTEM_ANNOUNCEMENT
+  SECURITY_ALERT
+}
+
+model Notification {
+  id     String           @id @default(cuid())
+  userId String
+  type   NotificationType
+  
+  title   String
+  message String
+  data    Json?
+  
+  isRead    Boolean @default(false)
+  readAt    DateTime?
+  deletedAt DateTime?
+  
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ==========================================
+// ANALYTICS & TRACKING
+// ==========================================
+
+model AnalyticsEvent {
+  id String @id @default(cuid())
+  
+  // Event Info
+  eventType String
+  eventName String
+  
+  // User Context
+  userId        String?
+  sessionId     String?
+  ipAddress     String?
+  userAgent     String?
+  
+  // Page Context
+  pageUrl       String?
+  referrer      String?
+  
+  // Custom Data
+  properties    Json?
+  
+  createdAt DateTime @default(now())
+  
+  @@index([eventType])
+  @@index([eventName])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("analytics_events")
+}
+
+// ==========================================
+// SECURITY & AUDIT
+// ==========================================
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  UPLOAD
+  DOWNLOAD
+  PURCHASE
+  REFUND
+  ADMIN_ACTION
+}
+
+model AuditLog {
+  id String @id @default(cuid())
+  
+  userId    String
+  action    AuditAction
+  resource  String // What was affected
+  resourceId String? // ID of the affected resource
+  
+  // Context
+  ipAddress String?
+  userAgent String?
+  
+  // Changes
+  oldValues Json?
+  newValues Json?
+  
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ==========================================
+// SYSTEM CONFIGURATION
+// ==========================================
+
+model SystemConfig {
+  id    String @id @default(cuid())
+  key   String @unique
+  value Json
+  
+  description String?
+  isPublic    Boolean @default(false)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("system_config")
+}

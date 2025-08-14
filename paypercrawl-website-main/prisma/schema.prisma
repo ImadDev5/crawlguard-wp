@@ -1,0 +1,72 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model BetaApplication {
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  position    String
+  resumeUrl   String?  // URL to stored resume file
+  phone       String?
+  website     String?
+  coverLetter String?
+  status      String   @default("pending") // pending, reviewed, contacted, rejected
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("beta_applications")
+}
+
+model WaitlistEntry {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  name        String
+  website     String?
+  companySize String?   // small, medium, large
+  useCase     String?   // How they plan to use PayPerCrawl
+  status      String    @default("pending") // pending, invited, accepted, rejected
+  inviteToken String?   @unique
+  invitedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("waitlist_entries")
+}
+
+model EmailLog {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  body      String
+  status    String   // sent, failed, pending
+  provider  String   // sendgrid, resend, etc.
+  createdAt DateTime @default(now())
+
+  @@map("email_logs")
+}
+
+model ContactSubmission {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  status    String   @default("pending") // pending, responded, archived
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contact_submissions")
+}

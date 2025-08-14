@@ -1,0 +1,20 @@
+name = "crawlguard-api"
+main = "backend/production-worker.js"
+compatibility_date = "2023-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Development environment
+[env.development]
+name = "crawlguard-api-dev"
+vars = { ENVIRONMENT = "development", API_VERSION = "1.0.0" }
+
+# Production environment
+[env.production]
+name = "crawlguard-api-prod"
+vars = { ENVIRONMENT = "production", API_VERSION = "1.0.0", RATE_LIMIT_ENABLED = "true" }
+
+# Environment variables (secrets set via CLI)
+# wrangler secret put DATABASE_URL --env production
+# wrangler secret put STRIPE_SECRET_KEY --env production
+# wrangler secret put STRIPE_WEBHOOK_SECRET --env production
+# wrangler secret put JWT_SECRET --env production

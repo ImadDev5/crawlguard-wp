@@ -1,0 +1,212 @@
+{
+  "name": "paypercrawl-enterprise",
+  "version": "6.0.0",
+  "description": "PayPerCrawl Enterprise - The Ultimate WordPress Plugin for Monetizing AI Bot Traffic",
+  "keywords": [
+    "wordpress",
+    "plugin",
+    "ai-bots",
+    "monetization",
+    "analytics",
+    "bot-detection",
+    "enterprise",
+    "revenue-tracking"
+  ],
+  "author": "PayPerCrawl Team <enterprise@paypercrawl.com>",
+  "license": "GPL-3.0",
+  "homepage": "https://paypercrawl.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paypercrawl/enterprise.git"
+  },
+  "bugs": {
+    "url": "https://github.com/paypercrawl/enterprise/issues",
+    "email": "support@paypercrawl.com"
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "scripts": {
+    "build": "npm run build:css && npm run build:js",
+    "build:css": "postcss assets/css/admin.css -o assets/css/admin.min.css --use autoprefixer --use cssnano",
+    "build:js": "uglifyjs assets/js/dashboard.js -o assets/js/dashboard.min.js --compress --mangle",
+    "watch": "npm run watch:css & npm run watch:js",
+    "watch:css": "postcss assets/css/admin.css -o assets/css/admin.min.css --use autoprefixer --use cssnano --watch",
+    "watch:js": "uglifyjs assets/js/dashboard.js -o assets/js/dashboard.min.js --compress --mangle --watch",
+    "lint": "npm run lint:css && npm run lint:js",
+    "lint:css": "stylelint 'assets/css/**/*.css'",
+    "lint:js": "eslint 'assets/js/**/*.js'",
+    "test": "npm run lint && npm run build",
+    "dev": "npm run watch",
+    "production": "NODE_ENV=production npm run build",
+    "clean": "rm -rf assets/css/*.min.css assets/js/*.min.js",
+    "serve": "php -S localhost:8000 -t . -f demo.php",
+    "deploy": "./deploy.sh production",
+    "package": "npm run production && zip -r paypercrawl-enterprise-v6.0.0.zip . -x '*.git*' 'node_modules/*' '*.log' '*.tmp' 'package-lock.json'"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.16",
+    "cssnano": "^6.0.1",
+    "eslint": "^8.55.0",
+    "postcss": "^8.4.32",
+    "postcss-cli": "^11.0.0",
+    "stylelint": "^15.11.0",
+    "stylelint-config-standard": "^34.0.0",
+    "uglify-js": "^3.17.4"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.0",
+    "chartjs-adapter-date-fns": "^3.0.0",
+    "date-fns": "^2.30.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ],
+  "stylelint": {
+    "extends": [
+      "stylelint-config-standard"
+    ],
+    "rules": {
+      "indentation": 4,
+      "string-quotes": "single",
+      "no-duplicate-selectors": true,
+      "color-hex-case": "lower",
+      "color-hex-length": "short",
+      "color-named": "never",
+      "selector-combinator-space-after": "always",
+      "selector-attribute-quotes": "always",
+      "selector-attribute-operator-space-before": "never",
+      "selector-attribute-operator-space-after": "never",
+      "selector-attribute-brackets-space-inside": "never",
+      "declaration-block-trailing-semicolon": "always",
+      "declaration-colon-space-before": "never",
+      "declaration-colon-space-after": "always",
+      "property-no-vendor-prefix": true,
+      "value-no-vendor-prefix": true,
+      "number-leading-zero": "always",
+      "function-url-quotes": "always",
+      "font-weight-notation": "numeric",
+      "comment-empty-line-before": "always",
+      "rule-empty-line-before": "always-multi-line",
+      "selector-pseudo-element-colon-notation": "double",
+      "selector-pseudo-class-parentheses-space-inside": "never",
+      "media-feature-range-operator-space-before": "always",
+      "media-feature-range-operator-space-after": "always",
+      "media-feature-parentheses-space-inside": "never",
+      "media-feature-colon-space-before": "never",
+      "media-feature-colon-space-after": "always"
+    }
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es2021": true,
+      "jquery": true
+    },
+    "extends": [
+      "eslint:recommended"
+    ],
+    "parserOptions": {
+      "ecmaVersion": 2021,
+      "sourceType": "module"
+    },
+    "globals": {
+      "wp": "readonly",
+      "paypercrawlAjax": "readonly",
+      "Chart": "readonly",
+      "PayPerCrawlDashboard": "writable"
+    },
+    "rules": {
+      "indent": [
+        "error",
+        4
+      ],
+      "linebreak-style": [
+        "error",
+        "unix"
+      ],
+      "quotes": [
+        "error",
+        "single"
+      ],
+      "semi": [
+        "error",
+        "always"
+      ],
+      "no-unused-vars": "warn",
+      "no-undef": "error",
+      "no-console": "warn",
+      "no-debugger": "error",
+      "eqeqeq": "error",
+      "curly": "error",
+      "brace-style": [
+        "error",
+        "1tbs"
+      ]
+    }
+  },
+  "postcss": {
+    "plugins": {
+      "autoprefixer": {},
+      "cssnano": {
+        "preset": [
+          "default",
+          {
+            "discardComments": {
+              "removeAll": true
+            },
+            "normalizeWhitespace": true,
+            "colormin": true,
+            "convertValues": true,
+            "discardDuplicates": true,
+            "discardEmpty": true,
+            "mergeLonghand": true,
+            "mergeRules": true,
+            "minifyFontValues": true,
+            "minifyGradients": true,
+            "minifyParams": true,
+            "minifySelectors": true,
+            "normalizeCharset": true,
+            "normalizeDisplayValues": true,
+            "normalizePositions": true,
+            "normalizeRepeatStyle": true,
+            "normalizeString": true,
+            "normalizeTimingFunctions": true,
+            "normalizeUnicode": true,
+            "normalizeUrl": true,
+            "orderedValues": true,
+            "reduceIdents": true,
+            "reduceInitial": true,
+            "reduceTransforms": true,
+            "svgo": true,
+            "uniqueSelectors": true
+          }
+        ]
+      }
+    }
+  },
+  "config": {
+    "version": "6.0.0",
+    "wordpress_min": "6.0",
+    "php_min": "7.4",
+    "mysql_min": "5.7"
+  },
+  "funding": {
+    "type": "individual",
+    "url": "https://paypercrawl.com/sponsor"
+  },
+  "private": false,
+  "files": [
+    "pay-per-crawl-enterprise.php",
+    "includes/",
+    "assets/",
+    "templates/",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ]
+}

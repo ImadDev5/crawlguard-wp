@@ -1,0 +1,109 @@
+/* Pay Per Crawl Admin Styles */
+.ppc-dashboard {
+    margin-top: 20px;
+}
+
+.ppc-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.ppc-stat-card {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    text-align: center;
+}
+
+.ppc-stat-card h3 {
+    margin: 0 0 15px 0;
+    color: #23282d;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ppc-stat-number {
+    font-size: 32px;
+    font-weight: bold;
+    color: #0073aa;
+    line-height: 1;
+    margin-bottom: 5px;
+}
+
+.ppc-status {
+    font-size: 18px;
+    font-weight: bold;
+    padding: 8px 16px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ppc-status.active {
+    color: #46b450;
+    background: #ecf7ed;
+    border: 1px solid #46b450;
+}
+
+.ppc-status.inactive {
+    color: #dc3232;
+    background: #f9e2e2;
+    border: 1px solid #dc3232;
+}
+
+.ppc-card {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 8px;
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.ppc-card h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #23282d;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.ppc-card p {
+    color: #666;
+    line-height: 1.6;
+}
+
+.wp-list-table {
+    margin-top: 15px;
+}
+
+.wp-list-table th {
+    font-weight: 600;
+    background: #f9f9f9;
+}
+
+.wp-list-table td {
+    padding: 12px 10px;
+    vertical-align: middle;
+}
+
+.wp-list-table tr:hover {
+    background: #f9f9f9;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .ppc-stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .ppc-stat-card {
+        margin-bottom: 15px;
+    }
+}

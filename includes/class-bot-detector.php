@@ -1,7 +1,7 @@
 <?php
 /**
  * Bot Detection Engine
- * 
+ *
  * This class handles the core bot detection logic and monetization decisions
  */
 
@@ -10,24 +10,24 @@ if (!defined('ABSPATH')) {
 }
 
 class CrawlGuard_Bot_Detector {
-    
+
     private $known_ai_bots = array(
         // OpenAI bots
         'gptbot' => array('company' => 'OpenAI', 'rate' => 0.002, 'confidence' => 95),
         'chatgpt-user' => array('company' => 'OpenAI', 'rate' => 0.002, 'confidence' => 95),
-        
+
         // Anthropic bots
         'anthropic-ai' => array('company' => 'Anthropic', 'rate' => 0.0015, 'confidence' => 95),
         'claude-web' => array('company' => 'Anthropic', 'rate' => 0.0015, 'confidence' => 95),
-        
+
         // Google bots
         'bard' => array('company' => 'Google', 'rate' => 0.001, 'confidence' => 90),
         'palm' => array('company' => 'Google', 'rate' => 0.001, 'confidence' => 90),
         'google-extended' => array('company' => 'Google', 'rate' => 0.001, 'confidence' => 90),
-        
+
         // Common Crawl
         'ccbot' => array('company' => 'Common Crawl', 'rate' => 0.001, 'confidence' => 90),
-        
+
         // Other major AI companies
         'cohere-ai' => array('company' => 'Cohere', 'rate' => 0.0012, 'confidence' => 85),
         'ai2bot' => array('company' => 'Allen Institute', 'rate' => 0.001, 'confidence' => 80),
@@ -37,7 +37,7 @@ class CrawlGuard_Bot_Detector {
         'perplexitybot' => array('company' => 'Perplexity', 'rate' => 0.0015, 'confidence' => 90),
         'youbot' => array('company' => 'You.com', 'rate' => 0.001, 'confidence' => 85),
         'phindbot' => array('company' => 'Phind', 'rate' => 0.001, 'confidence' => 80),
-        
+
         // Search engines with AI features
         'bingbot' => array('company' => 'Microsoft', 'rate' => 0.0012, 'confidence' => 85),
         'slurp' => array('company' => 'Yahoo', 'rate' => 0.001, 'confidence' => 80),
@@ -45,7 +45,7 @@ class CrawlGuard_Bot_Detector {
         'applebot' => array('company' => 'Apple', 'rate' => 0.001, 'confidence' => 80),
         'amazonbot' => array('company' => 'Amazon', 'rate' => 0.001, 'confidence' => 80)
     );
-    
+
     private $suspicious_patterns = array(
         '/python-requests/',
         '/scrapy/',
@@ -59,27 +59,40 @@ class CrawlGuard_Bot_Detector {
         '/llm/i',
         '/language.*model/i'
     );
-    
+    private function get_cf_signals() {
+        $cf_is_bot = isset($_SERVER['HTTP_CF_IS_BOT']) && $_SERVER['HTTP_CF_IS_BOT'] === '1';
+        $cf_verified = isset($_SERVER['HTTP_CF_VERIFIED_BOT']) && $_SERVER['HTTP_CF_VERIFIED_BOT'] === '1';
+        $cf_score = isset($_SERVER['HTTP_CF_BOT_MANAGEMENT_SCORE']) ? (int) $_SERVER['HTTP_CF_BOT_MANAGEMENT_SCORE'] : null;
+        $cf_threat = isset($_SERVER['HTTP_CF_THREAT_SCORE']) ? (int) $_SERVER['HTTP_CF_THREAT_SCORE'] : null;
+        return array(
+            'is_cf_bot' => $cf_is_bot,
+            'verified' => $cf_verified,
+            'score' => $cf_score,
+            'threat' => $cf_threat,
+        );
+    }
+
+
     public function process_request() {
         // Skip admin and AJAX requests
         if (is_admin() || wp_doing_ajax()) {
             return;
         }
-        
+
         $user_agent = $this->get_user_agent();
         $ip_address = $this->get_client_ip();
-        
+
         // Detect if this is a bot
         $bot_info = $this->detect_bot($user_agent, $ip_address);
-        
+
         if ($bot_info['is_bot']) {
             $this->handle_bot_request($bot_info, $user_agent, $ip_address);
         }
-        
+
         // Log the request for analytics
         $this->log_request($user_agent, $ip_address, $bot_info);
     }
-    
+
     private function detect_bot($user_agent, $ip_address) {
         $bot_info = array(
             'is_bot' => false,
@@ -88,20 +101,32 @@ class CrawlGuard_Bot_Detector {
             'confidence' => 0,
             'is_ai_bot' => false
         );
-        
-        // Check against known AI bots
-        foreach ($this->known_ai_bots as $bot_signature => $bot_data) {
-            if (stripos($user_agent, $bot_signature) !== false) {
-                $bot_info['is_bot'] = true;
-                $bot_info['is_ai_bot'] = true;
-                $bot_info['bot_type'] = $bot_signature;
-                $bot_info['bot_name'] = $bot_data['company'];
-                $bot_info['confidence'] = $bot_data['confidence'];
-                $bot_info['suggested_rate'] = $bot_data['rate'];
-                break;
+
+        // Prefer Cloudflare signals when available
+        $cf = $this->get_cf_signals();
+        if ($cf['is_cf_bot'] || (!is_null($cf['score']) && $cf['score'] >= 66)) {
+            $bot_info['is_bot'] = true;
+            $bot_info['is_ai_bot'] = true;
+            $bot_info['bot_type'] = $cf['verified'] ? 'verified' : 'cloudflare_detected';
+            $bot_info['bot_name'] = $cf['verified'] ? 'Verified Bot' : 'CF Detected Bot';
+            $bot_info['confidence'] = $cf['verified'] ? 95 : max(70, (int)$cf['score']);
+        }
+
+        // Check against known AI bots if not already determined by CF
+        if (!$bot_info['is_bot']) {
+            foreach ($this->known_ai_bots as $bot_signature => $bot_data) {
+                if (stripos($user_agent, $bot_signature) !== false) {
+                    $bot_info['is_bot'] = true;
+                    $bot_info['is_ai_bot'] = true;
+                    $bot_info['bot_type'] = $bot_signature;
+                    $bot_info['bot_name'] = $bot_data['company'];
+                    $bot_info['confidence'] = $bot_data['confidence'];
+                    $bot_info['suggested_rate'] = $bot_data['rate'];
+                    break;
+                }
             }
         }
-        
+
         // Check suspicious patterns if not already detected
         if (!$bot_info['is_bot']) {
             foreach ($this->suspicious_patterns as $pattern) {
@@ -115,32 +140,32 @@ class CrawlGuard_Bot_Detector {
                 }
             }
         }
-        
+
         // Additional heuristics
         if (!$bot_info['is_bot']) {
             $bot_info = $this->apply_heuristics($user_agent, $ip_address, $bot_info);
         }
-        
+
         return $bot_info;
     }
-    
+
     private function apply_heuristics($user_agent, $ip_address, $bot_info) {
         $suspicious_score = 0;
-        
+
         // Check for missing common browser headers
         if (empty($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
             $suspicious_score += 20;
         }
-        
+
         if (empty($_SERVER['HTTP_ACCEPT_ENCODING'])) {
             $suspicious_score += 15;
         }
-        
+
         // Check user agent length and structure
         if (strlen($user_agent) < 20 || strlen($user_agent) > 500) {
             $suspicious_score += 25;
         }
-        
+
         // Check for common bot indicators
         $bot_keywords = array('bot', 'crawler', 'spider', 'scraper', 'fetch', 'http', 'client', 'agent');
         foreach ($bot_keywords as $keyword) {
@@ -148,7 +173,7 @@ class CrawlGuard_Bot_Detector {
                 $suspicious_score += 10;
             }
         }
-        
+
         // If suspicious score is high enough, flag as potential AI bot
         if ($suspicious_score >= 40) {
             $bot_info['is_bot'] = true;
@@ -157,48 +182,50 @@ class CrawlGuard_Bot_Detector {
             $bot_info['bot_name'] = 'Potential AI Bot';
             $bot_info['confidence'] = min($suspicious_score, 85);
         }
-        
+
         return $bot_info;
     }
-    
+
     private function handle_bot_request($bot_info, $user_agent, $ip_address) {
         $options = get_option('crawlguard_options');
-        
+
         // If monetization is not enabled, just log and continue
         if (!$options['monetization_enabled']) {
             return;
         }
-        
+
         // Check if this bot is in the allowed list
         if (in_array(strtolower($bot_info['bot_type']), $options['allowed_bots'])) {
             return;
         }
-        
+
         // For AI bots, implement monetization logic
         if ($bot_info['is_ai_bot']) {
             $this->monetize_request($bot_info, $user_agent, $ip_address);
         }
     }
-    
+
     private function monetize_request($bot_info, $user_agent, $ip_address) {
         // Send beacon to our backend API
         $api_client = new CrawlGuard_API_Client();
-        
+        $cf = $this->get_cf_signals();
+
         $request_data = array(
             'site_url' => get_site_url(),
             'page_url' => $this->get_current_url(),
             'user_agent' => $user_agent,
             'ip_address' => $ip_address,
             'bot_info' => $bot_info,
+            'cf' => $cf,
             'timestamp' => current_time('mysql'),
             'content_type' => $this->get_content_type(),
             'content_length' => $this->estimate_content_value()
         );
-        
+
         // Send to backend for processing
         $response = $api_client->send_monetization_request($request_data);
-        
-        // Handle the response
+
+        // If backend says to block/paywall, act immediately
         if ($response && isset($response['action'])) {
             switch ($response['action']) {
                 case 'block':
@@ -212,26 +239,34 @@ class CrawlGuard_Bot_Detector {
                     $this->log_revenue($response['revenue'] ?? 0);
                     break;
             }
+            return;
+        }
+
+        // Fallback: optional auto-block based on Cloudflare score if configured
+        $options = get_option('crawlguard_options');
+        $auto_block_threshold = isset($options['auto_block_cf_score']) ? (int)$options['auto_block_cf_score'] : 0;
+        if ($auto_block_threshold > 0 && !empty($cf['score']) && $cf['score'] >= $auto_block_threshold) {
+            $this->block_request('Access denied');
         }
     }
-    
+
     private function block_request($message = 'Access denied') {
         status_header(402); // Payment Required
         wp_die($message, 'Payment Required', array('response' => 402));
     }
-    
+
     private function show_paywall($response) {
         // Implement paywall logic
         $payment_url = $response['payment_url'] ?? '';
         $amount = $response['amount'] ?? 0;
-        
+
         $paywall_html = $this->generate_paywall_html($payment_url, $amount);
-        
+
         status_header(402);
         echo $paywall_html;
         exit;
     }
-    
+
     private function generate_paywall_html($payment_url, $amount) {
         ob_start();
         ?>
@@ -260,12 +295,12 @@ class CrawlGuard_Bot_Detector {
         <?php
         return ob_get_clean();
     }
-    
+
     private function log_request($user_agent, $ip_address, $bot_info) {
         global $wpdb;
-        
+
         $table_name = $wpdb->prefix . 'crawlguard_logs';
-        
+
         $wpdb->insert(
             $table_name,
             array(
@@ -278,26 +313,26 @@ class CrawlGuard_Bot_Detector {
             array('%s', '%s', '%d', '%s', '%s')
         );
     }
-    
+
     private function log_revenue($amount) {
         global $wpdb;
-        
+
         $table_name = $wpdb->prefix . 'crawlguard_logs';
-        
+
         // Update the last log entry with revenue
         $wpdb->query($wpdb->prepare(
             "UPDATE $table_name SET revenue_generated = %f WHERE id = (SELECT MAX(id) FROM $table_name)",
             $amount
         ));
     }
-    
+
     private function get_user_agent() {
         return $_SERVER['HTTP_USER_AGENT'] ?? '';
     }
-    
+
     private function get_client_ip() {
         $ip_keys = array('HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP', 'REMOTE_ADDR');
-        
+
         foreach ($ip_keys as $key) {
             if (!empty($_SERVER[$key])) {
                 $ip = $_SERVER[$key];
@@ -309,14 +344,14 @@ class CrawlGuard_Bot_Detector {
                 }
             }
         }
-        
+
         return $_SERVER['REMOTE_ADDR'] ?? '';
     }
-    
+
     private function get_current_url() {
         return (is_ssl() ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
     }
-    
+
     private function get_content_type() {
         if (is_single()) return 'post';
         if (is_page()) return 'page';
@@ -325,12 +360,12 @@ class CrawlGuard_Bot_Detector {
         if (is_home()) return 'home';
         return 'other';
     }
-    
+
     private function estimate_content_value() {
         // Simple content value estimation based on word count
         $content = get_the_content();
         $word_count = str_word_count(strip_tags($content));
-        
+
         // Base value: $0.001 per 100 words
         return max(0.001, ($word_count / 100) * 0.001);
     }

@@ -1,0 +1,2288 @@
+I'll provide you with a detailed breakdown of each pending task, including technical implementation details, code examples, and step-by-step instructions.
+
+## 🚨 **HIGH PRIORITY - IMMEDIATE BACKEND WORK**
+
+### 1. **Beta Application Backend System**
+
+#### **1.1 Database Schema Implementation**
+
+First, let's update your Prisma schema. Check your current schema and add these models:
+
+```prisma
+// prisma/schema.prisma
+
+model BetaApplication {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  position  String
+  resumeUrl String?  // URL to stored resume file
+  phone     String?
+  website   String?
+  coverLetter String?
+  status    String   @default("pending") // pending, reviewed, contacted, rejected
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("beta_applications")
+}
+
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  website   String?
+  companySize String? // small, medium, large
+  useCase   String?  // How they plan to use PayPerCrawl
+  status    String   @default("pending") // pending, invited, accepted, rejected
+  inviteToken String? @unique
+  invitedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("waitlist_entries")
+}
+
+// Add this if you want to track email communications
+model EmailLog {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  body      String
+  status    String   // sent, failed, pending
+  provider  String   // sendgrid, resend, etc.
+  createdAt DateTime @default(now())
+
+  @@map("email_logs")
+}
+```
+
+**Implementation Steps:**
+1. Run `npx prisma db push` to update your database
+2. Generate Prisma client: `npx prisma generate`
+3. Create database seed file for initial data
+
+#### **1.2 Beta Application API Endpoints**
+
+Create these API routes:
+
+**File: `src/app/api/applications/submit/route.ts`**
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+import { z } from 'zod'
+
+// Validation schema
+const applicationSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Invalid email address'),
+  position: z.string().min(1, 'Position is required'),
+  phone: z.string().optional(),
+  website: z.string().url().optional().or(z.literal('')),
+  coverLetter: z.string().optional(),
+})
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    
+    // Validate input
+    const validatedData = applicationSchema.parse(body)
+    
+    // Check if application already exists
+    const existingApplication = await db.betaApplication.findUnique({
+      where: { email: validatedData.email }
+    })
+    
+    if (existingApplication) {
+      return NextResponse.json(
+        { error: 'An application with this email already exists' },
+        { status: 400 }
+      )
+    }
+    
+    // Create application
+    const application = await db.betaApplication.create({
+      data: {
+        name: validatedData.name,
+        email: validatedData.email,
+        position: validatedData.position,
+        phone: validatedData.phone || null,
+        website: validatedData.website || null,
+        coverLetter: validatedData.coverLetter || null,
+      }
+    })
+    
+    // TODO: Send confirmation email
+    // await sendConfirmationEmail(validatedData.email, validatedData.name)
+    
+    return NextResponse.json({
+      message: 'Application submitted successfully',
+      applicationId: application.id
+    })
+    
+  } catch (error) {
+    console.error('Application submission error:', error)
+    
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.errors },
+        { status: 400 }
+      )
+    }
+    
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function GET() {
+  try {
+    const applications = await db.betaApplication.findMany({
+      orderBy: { createdAt: 'desc' }
+    })
+    
+    return NextResponse.json(applications)
+  } catch (error) {
+    console.error('Error fetching applications:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+**File: `src/app/api/applications/[id]/route.ts`**
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const application = await db.betaApplication.findUnique({
+      where: { id: params.id }
+    })
+    
+    if (!application) {
+      return NextResponse.json(
+        { error: 'Application not found' },
+        { status: 404 }
+      )
+    }
+    
+    return NextResponse.json(application)
+  } catch (error) {
+    console.error('Error fetching application:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const body = await request.json()
+    const { status, notes } = body
+    
+    const application = await db.betaApplication.update({
+      where: { id: params.id },
+      data: {
+        status: status || undefined,
+        notes: notes || undefined,
+        updatedAt: new Date()
+      }
+    })
+    
+    return NextResponse.json(application)
+  } catch (error) {
+    console.error('Error updating application:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+#### **1.3 Frontend Form Integration**
+
+Update your careers page to use the API instead of mailto links:
+
+```typescript
+// Add this to your careers page.tsx
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+
+const applicationSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Invalid email address'),
+  position: z.string().min(1, 'Position is required'),
+  phone: z.string().optional(),
+  website: z.string().url().optional().or(z.literal('')),
+  coverLetter: z.string().optional(),
+})
+
+type ApplicationFormData = z.infer<typeof applicationSchema>
+
+// Replace the Button component with a form
+const ApplicationForm = ({ roleTitle }: { roleTitle: string }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitted, setIsSubmitted] = useState(false)
+  
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset
+  } = useForm<ApplicationFormData>({
+    resolver: zodResolver(applicationSchema),
+    defaultValues: {
+      position: roleTitle
+    }
+  })
+
+  const onSubmit = async (data: ApplicationFormData) => {
+    setIsSubmitting(true)
+    try {
+      const response = await fetch('/api/applications/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (response.ok) {
+        setIsSubmitted(true)
+        reset()
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to submit application')
+      }
+    } catch (error) {
+      alert('An error occurred while submitting your application')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (isSubmitted) {
+    return (
+      <div className="text-center p-4 bg-green-50 rounded-lg">
+        <p className="text-green-800 font-medium">Application submitted successfully!</p>
+        <p className="text-green-600 text-sm mt-1">We'll review your application and get back to you soon.</p>
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Full Name *
+        </label>
+        <input
+          {...register('name')}
+          className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="John Doe"
+        />
+        {errors.name && (
+          <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Email Address *
+        </label>
+        <input
+          {...register('email')}
+          type="email"
+          className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="john@example.com"
+        />
+        {errors.email && (
+          <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Phone Number
+        </label>
+        <input
+          {...register('phone')}
+          className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="+1 (555) 123-4567"
+        />
+        {errors.phone && (
+          <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Website/Portfolio
+        </label>
+        <input
+          {...register('website')}
+          className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="https://yourportfolio.com"
+        />
+        {errors.website && (
+          <p className="text-red-500 text-xs mt-1">{errors.website.message}</p>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Cover Letter
+        </label>
+        <textarea
+          {...register('coverLetter')}
+          rows={4}
+          className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Tell us why you're interested in this position..."
+        />
+        {errors.coverLetter && (
+          <p className="text-red-500 text-xs mt-1">{errors.coverLetter.message}</p>
+        )}
+      </div>
+
+      <Button
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full"
+      >
+        {isSubmitting ? 'Submitting...' : 'Submit Application'}
+      </Button>
+    </form>
+  )
+}
+```
+
+### 2. **Waitlist Backend System**
+
+#### **2.1 Waitlist API Implementation**
+
+**File: `src/app/api/waitlist/join/route.ts`**
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+import { z } from 'zod'
+import { generateInviteToken } from '@/lib/utils'
+
+const waitlistSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Invalid email address'),
+  website: z.string().url().optional().or(z.literal('')),
+  companySize: z.enum(['small', 'medium', 'large']).optional(),
+  useCase: z.string().optional(),
+})
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const validatedData = waitlistSchema.parse(body)
+    
+    // Check if already on waitlist
+    const existingEntry = await db.waitlistEntry.findUnique({
+      where: { email: validatedData.email }
+    })
+    
+    if (existingEntry) {
+      return NextResponse.json(
+        { error: 'This email is already on the waitlist' },
+        { status: 400 }
+      )
+    }
+    
+    // Create waitlist entry
+    const waitlistEntry = await db.waitlistEntry.create({
+      data: {
+        name: validatedData.name,
+        email: validatedData.email,
+        website: validatedData.website || null,
+        companySize: validatedData.companySize || null,
+        useCase: validatedData.useCase || null,
+        inviteToken: generateInviteToken(), // Generate unique token
+      }
+    })
+    
+    // TODO: Send confirmation email
+    // await sendWaitlistConfirmationEmail(validatedData.email, validatedData.name)
+    
+    return NextResponse.json({
+      message: 'Successfully joined waitlist',
+      position: await getWaitlistPosition(validatedData.email)
+    })
+    
+  } catch (error) {
+    console.error('Waitlist join error:', error)
+    
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.errors },
+        { status: 400 }
+      )
+    }
+    
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+async function getWaitlistPosition(email: string): Promise<number> {
+  const count = await db.waitlistEntry.count({
+    where: {
+      createdAt: {
+        lte: new Date()
+      }
+    }
+  })
+  return count
+}
+```
+
+**File: `src/app/api/waitlist/invite/route.ts`**
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+
+export async function POST(request: NextRequest) {
+  try {
+    const { email } = await request.json()
+    
+    const entry = await db.waitlistEntry.findUnique({
+      where: { email }
+    })
+    
+    if (!entry) {
+      return NextResponse.json(
+        { error: 'Waitlist entry not found' },
+        { status: 404 }
+      )
+    }
+    
+    if (entry.status !== 'pending') {
+      return NextResponse.json(
+        { error: 'Entry already processed' },
+        { status: 400 }
+      )
+    }
+    
+    // Update entry status and send invite
+    const updatedEntry = await db.waitlistEntry.update({
+      where: { email },
+      data: {
+        status: 'invited',
+        invitedAt: new Date()
+      }
+    })
+    
+    // TODO: Send beta invite email
+    // await sendBetaInviteEmail(email, entry.inviteToken)
+    
+    return NextResponse.json({
+      message: 'Beta invite sent successfully',
+      inviteToken: updatedEntry.inviteToken
+    })
+    
+  } catch (error) {
+    console.error('Invite send error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+#### **2.2 Frontend Waitlist Form**
+
+Update your waitlist page with a proper form:
+
+```typescript
+// src/app/waitlist/page.tsx - Add this form component
+const WaitlistForm = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [position, setPosition] = useState<number | null>(null)
+  
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset
+  } = useForm({
+    resolver: zodResolver(waitlistSchema)
+  })
+
+  const onSubmit = async (data: any) => {
+    setIsSubmitting(true)
+    try {
+      const response = await fetch('/api/waitlist/join', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      const result = await response.json()
+      
+      if (response.ok) {
+        setIsSubmitted(true)
+        setPosition(result.position)
+        reset()
+      } else {
+        alert(result.error || 'Failed to join waitlist')
+      }
+    } catch (error) {
+      alert('An error occurred while joining the waitlist')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (isSubmitted) {
+    return (
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="h-8 w-8 text-green-600" />
+          </div>
+          <CardTitle className="text-xl text-green-800">You're on the list!</CardTitle>
+          <CardDescription>
+            You're #{position} on the waitlist. We'll notify you when beta access is available.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="border-0 shadow-lg max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle>Join the Beta Waitlist</CardTitle>
+        <CardDescription>
+          Be among the first to experience PayPerCrawl's revolutionary content monetization platform.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Full Name *
+            </label>
+            <input
+              {...register('name')}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="John Doe"
+            />
+            {errors.name && (
+              <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Email Address *
+            </label>
+            <input
+              {...register('email')}
+              type="email"
+              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="john@example.com"
+            />
+            {errors.email && (
+              <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Website
+            </label>
+            <input
+              {...register('website')}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="https://yourwebsite.com"
+            />
+            {errors.website && (
+              <p className="text-red-500 text-xs mt-1">{errors.website.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Company Size
+            </label>
+            <select
+              {...register('companySize')}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select size</option>
+              <option value="small">Small (1-10 employees)</option>
+              <option value="medium">Medium (11-50 employees)</option>
+              <option value="large">Large (50+ employees)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              How do you plan to use PayPerCrawl?
+            </label>
+            <textarea
+              {...register('useCase')}
+              rows={3}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Tell us about your use case..."
+            />
+          </div>
+
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full"
+          >
+            {isSubmitting ? 'Joining...' : 'Join Waitlist'}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}
+```
+
+### 3. **Email System Setup**
+
+#### **3.1 Email Service Integration**
+
+First, install email service dependencies:
+
+```bash
+npm install resend nodemailer @types/nodemailer
+```
+
+**File: `src/lib/email.ts`**
+```typescript
+import { Resend } from 'resend'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
+
+export interface EmailOptions {
+  to: string
+  subject: string
+  html: string
+  from?: string
+}
+
+export async function sendEmail(options: EmailOptions) {
+  try {
+    const { data, error } = await resend.emails.send({
+      from: options.from || 'PayPerCrawl <noreply@paypercrawl.com>',
+      to: [options.to],
+      subject: options.subject,
+      html: options.html,
+    })
+
+    if (error) {
+      console.error('Email send error:', error)
+      throw error
+    }
+
+    return data
+  } catch (error) {
+    console.error('Email service error:', error)
+    throw error
+  }
+}
+
+export async function sendApplicationConfirmation(email: string, name: string) {
+  const subject = 'Application Received - PayPerCrawl'
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #2563eb;">Application Received</h2>
+      <p>Hi ${name},</p>
+      <p>Thank you for your interest in joining the PayPerCrawl team! We've received your application and will review it carefully.</p>
+      <p>Our team typically reviews applications within 3-5 business days. If your profile matches our current needs, we'll reach out to schedule an interview.</p>
+      <p>Best regards,<br>The PayPerCrawl Team</p>
+    </div>
+  `
+
+  return sendEmail({ to: email, subject, html })
+}
+
+export async function sendWaitlistConfirmation(email: string, name: string, position: number) {
+  const subject = 'You\'re on the PayPerCrawl Beta Waitlist!'
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #2563eb;">Welcome to the Waitlist!</h2>
+      <p>Hi ${name},</p>
+      <p>Thank you for your interest in PayPerCrawl! You're now <strong>#${position}</strong> on our beta waitlist.</p>
+      <p>We're rolling out beta access in waves, and we'll notify you as soon as your spot becomes available.</p>
+      <p>In the meantime, feel free to follow us on social media for updates and announcements.</p>
+      <p>Best regards,<br>The PayPerCrawl Team</p>
+    </div>
+  `
+
+  return sendEmail({ to: email, subject, html })
+}
+
+export async function sendBetaInvite(email: string, inviteToken: string) {
+  const subject = 'Your PayPerCrawl Beta Access is Ready!'
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #2563eb;">Beta Access Granted!</h2>
+      <p>Congratulations!</p>
+      <p>Your PayPerCrawl beta access is now ready. Click the link below to get started:</p>
+      <p>
+        <a href="${process.env.NEXT_PUBLIC_APP_URL}/beta/accept?token=${inviteToken}" 
+           style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+          Activate Beta Access
+        </a>
+      </p>
+      <p>This link will expire in 7 days. If you have any questions, don't hesitate to reach out.</p>
+      <p>Best regards,<br>The PayPerCrawl Team</p>
+    </div>
+  `
+
+  return sendEmail({ to: email, subject, html })
+}
+```
+
+#### **3.2 Environment Variables**
+
+Add these to your `.env.local` file:
+
+```env
+# Email Service
+RESEND_API_KEY=your_resend_api_key_here
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Database
+DATABASE_URL="file:./dev.db"
+```
+
+### 4. **Admin Dashboard**
+
+#### **4.1 Admin API Routes**
+
+**File: `src/app/api/admin/applications/route.ts`**
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+
+// Simple admin authentication - in production, use proper auth
+function isAdmin(request: NextRequest): boolean {
+  const authHeader = request.headers.get('authorization')
+  return authHeader === `Bearer ${process.env.ADMIN_API_KEY}`
+}
+
+export async function GET(request: NextRequest) {
+  if (!isAdmin(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const offset = (page - 1) * limit
+
+    const where = status ? { status } : {}
+
+    const [applications, total] = await Promise.all([
+      db.betaApplication.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: offset,
+        take: limit
+      }),
+      db.betaApplication.count({ where })
+    ])
+
+    return NextResponse.json({
+      applications,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    })
+  } catch (error) {
+    console.error('Error fetching applications:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+**File: `src/app/api/admin/waitlist/route.ts`**
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+
+function isAdmin(request: NextRequest): boolean {
+  const authHeader = request.headers.get('authorization')
+  return authHeader === `Bearer ${process.env.ADMIN_API_KEY}`
+}
+
+export async function GET(request: NextRequest) {
+  if (!isAdmin(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    const waitlist = await db.waitlistEntry.findMany({
+      orderBy: { createdAt: 'desc' }
+    })
+
+    return NextResponse.json(waitlist)
+  } catch (error) {
+    console.error('Error fetching waitlist:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  if (!isAdmin(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    const { email, action } = await request.json()
+
+    if (action === 'invite') {
+      const entry = await db.waitlistEntry.findUnique({
+        where: { email }
+      })
+
+      if (!entry || entry.status !== 'pending') {
+        return NextResponse.json(
+          { error: 'Invalid waitlist entry' },
+          { status: 400 }
+        )
+      }
+
+      await db.waitlistEntry.update({
+        where: { email },
+        data: {
+          status: 'invited',
+          invitedAt: new Date()
+        }
+      })
+
+      // TODO: Send beta invite email
+      // await sendBetaInvite(email, entry.inviteToken)
+
+      return NextResponse.json({ message: 'Invite sent successfully' })
+    }
+
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+  } catch (error) {
+    console.error('Error processing waitlist action:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+#### **4.2 Admin Dashboard Page**
+
+**File: `src/app/admin/page.tsx`**
+```typescript
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Users, FileText, Mail, Eye, CheckCircle, XCircle } from "lucide-react"
+
+interface Application {
+  id: string
+  name: string
+  email: string
+  position: string
+  status: string
+  createdAt: string
+}
+
+interface WaitlistEntry {
+  id: string
+  name: string
+  email: string
+  status: string
+  createdAt: string
+}
+
+export default function AdminDashboard() {
+  const [applications, setApplications] = useState<Application[]>([])
+  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'applications' | 'waitlist'>('applications')
+
+  useEffect(() => {
+    fetchData()
+  }, [activeTab])
+
+  const fetchData = async () => {
+    try {
+      const token = localStorage.getItem('adminToken')
+      if (!token) {
+        // Redirect to login or show login form
+        return
+      }
+
+      const endpoint = activeTab === 'applications' 
+        ? '/api/admin/applications' 
+        : '/api/admin/waitlist'
+      
+      const response = await fetch(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (activeTab === 'applications') {
+          setApplications(data.applications || data)
+        } else {
+          setWaitlist(data)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleApplicationAction = async (id: string, action: string) => {
+    try {
+      const token = localStorage.getItem('adminToken')
+      const response = await fetch(`/api/applications/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: action })
+      })
+
+      if (response.ok) {
+        fetchData()
+      }
+    } catch (error) {
+      console.error('Error updating application:', error)
+    }
+  }
+
+  const handleWaitlistAction = async (email: string, action: string) => {
+    try {
+      const token = localStorage.getItem('adminToken')
+      const response = await fetch('/api/admin/waitlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ email, action })
+      })
+
+      if (response.ok) {
+        fetchData()
+      }
+    } catch (error) {
+      console.error('Error processing waitlist action:', error)
+    }
+  }
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-slate-900">Admin Dashboard</h1>
+          <p className="text-slate-600 mt-2">Manage applications and waitlist</p>
+        </div>
+
+        <div className="flex space-x-4 mb-6">
+          <Button
+            variant={activeTab === 'applications' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('applications')}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Applications ({applications.length})
+          </Button>
+          <Button
+            variant={activeTab === 'waitlist' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('waitlist')}
+          >
+            <Users className="h-4 w-4 mr-2" />
+            Waitlist ({waitlist.length})
+          </Button>
+        </div>
+
+        {activeTab === 'applications' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Job Applications</CardTitle>
+              <CardDescription>Review and manage job applications</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Position</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Applied</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {applications.map((app) => (
+                    <TableRow key={app.id}>
+                      <TableCell className="font-medium">{app.name}</TableCell>
+                      <TableCell>{app.email}</TableCell>
+                      <TableCell>{app.position}</TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          app.status === 'pending' ? 'secondary' :
+                          app.status === 'reviewed' ? 'default' :
+                          app.status === 'contacted' ? 'default' : 'destructive'
+                        }>
+                          {app.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(app.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleApplicationAction(app.id, 'reviewed')}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleApplicationAction(app.id, 'contacted')}
+                          >
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleApplicationAction(app.id, 'rejected')}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+
+        {activeTab === 'waitlist' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Beta Waitlist</CardTitle>
+              <CardDescription>Manage beta waitlist entries</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {waitlist.map((entry) => (
+                    <TableRow key={entry.id}>
+                      <TableCell className="font-medium">{entry.name}</TableCell>
+                      <TableCell>{entry.email}</TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          entry.status === 'pending' ? 'secondary' :
+                          entry.status === 'invited' ? 'default' :
+                          entry.status === 'accepted' ? 'default' : 'destructive'
+                        }>
+                          {entry.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(entry.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        {entry.status === 'pending' && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleWaitlistAction(entry.email, 'invite')}
+                          >
+                            <Mail className="h-4 w-4 mr-2" />
+                            Send Invite
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  )
+}
+```
+
+### 5. **Installation and Setup Commands**
+
+Add these missing dependencies:
+
+```bash
+# Form handling and validation
+npm install react-hook-form @hookform/resolvers zod
+
+# Email service
+npm install resend
+
+# Additional UI components
+npm install @radix-ui/react-select @radix-ui/react-textarea
+```
+
+Create utility functions:
+
+**File: `src/lib/utils.ts`**
+```typescript
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+export function generateInviteToken(): string {
+  return Math.random().toString(36).substring(2, 15) + 
+         Math.random().toString(36).substring(2, 15)
+}
+
+export function formatDate(date: Date | string): string {
+  return new Date(date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+```
+
+## 📋 **IMPLEMENTATION ROADMAP**
+
+### **Phase 1: Core Backend (Week 1-2)**
+1. **Day 1-2**: Database schema setup and Prisma configuration
+2. **Day 3-4**: Beta application API endpoints
+3. **Day 5-6**: Waitlist API endpoints
+4. **Day 7**: Email service integration
+
+### **Phase 2: Frontend Integration (Week 3)**
+1. **Day 8-9**: Application forms with validation
+2. **Day 10-11**: Waitlist form integration
+3. **Day 12-13**: Form submission handling
+4. **Day 14**: Error handling and user feedback
+
+### **Phase 3: Admin System (Week 4)**
+1. **Day 15-16**: Admin API endpoints
+2. **Day 17-18**: Admin dashboard UI
+3. **Day 19-20**: Admin authentication
+4. **Day 21**: Testing and bug fixes
+
+### **Phase 4: Polish and Optimization (Week 5)**
+1. **Day 22-23**: Performance optimization
+2. **Day 24-25**: Security enhancements
+3. **Day 26-27**: Mobile responsiveness
+4. **Day 28**: Final testing and deployment
+
+## 🎯 **IMMEDIATE NEXT STEPS**
+
+1. **Run these commands now:**
+   ```bash
+   npm install react-hook-form @hookform/resolvers zod resend
+   npx prisma db push
+   npx prisma generate
+   ```
+
+2. **Update your `.env.local` file** with the email service configuration
+
+3. **Start with the database schema** - this is the foundation for everything else
+
+4. **Implement one API endpoint at a time** and test each one thoroughly
+
+Would you like me to start implementing any of these specific components? I recommend beginning with the **Database Schema** and **Beta Application API** as they're the foundation for your other features.
+
+I'll create a comprehensive technical documentation and overview of the PayPerCrawl application for engineers and employees. This will help them understand what has been built, the architecture, and how to work with the codebase.
+
+# 📚 **PayPerCrawl Application - Technical Documentation**
+
+## 🏗️ **Application Overview**
+
+### **What is PayPerCrawl?**
+
+PayPerCrawl is a revolutionary content monetization platform that serves as a bridge between WordPress publishers and AI companies. The application enables WordPress site owners to monetize AI bot traffic by creating a two-sided marketplace for content licensing.
+
+### **Core Business Concept**
+
+1. **Problem**: AI companies (like OpenAI, Google, Anthropic) need high-quality, diverse training data for their models
+2. **Solution**: PayPerCrawl aggregates WordPress publishers and licenses their content to AI companies
+3. **Value Proposition**: Publishers get paid for AI bot access, AI companies get legal, high-quality training data
+
+### **Target Audience**
+
+- **Primary**: WordPress publishers (75M+ sites globally)
+- **Secondary**: AI companies and startups needing training data
+- **Tertiary**: Developers and technical users interested in content monetization
+
+## 🎯 **Current Application State**
+
+### **Completed Features**
+
+#### **1. Frontend Infrastructure** ✅
+- **Framework**: Next.js 15 with App Router
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS + shadcn/ui components
+- **State Management**: Client-side React state
+- **Routing**: App Router with proper navigation
+
+#### **2. Public Pages** ✅
+- **Home Page** (`/`): Landing page with beta program information
+- **About Page** (`/about`): Company information and mission
+- **Features Page** (`/features`): Product capabilities and technical specifications
+- **Blog Page** (`/blog`): Content marketing and educational articles
+- **Contact Page** (`/contact`): Company contact information
+- **Waitlist Page** (`/waitlist`): Beta program registration
+- **Careers Page** (`/careers`): Job applications and hiring
+
+#### **3. UI/UX Design** ✅
+- **Responsive Design**: Mobile-first approach
+- **Component Library**: Consistent shadcn/ui components
+- **Brand Identity**: Professional blue/purple color scheme
+- **Accessibility**: Semantic HTML and ARIA-friendly
+- **Performance**: Optimized images and loading states
+
+#### **4. Navigation System** ✅
+- **Main Navigation**: Consistent across all pages
+- **Mobile Responsive**: Hamburger menu for mobile devices
+- **Active States**: Current page highlighting
+- **CTA Buttons**: Prominent "Join Beta" buttons
+
+### **Technical Architecture**
+
+#### **Frontend Stack**
+```
+Frontend Architecture:
+├── Next.js 15 (App Router)
+├── TypeScript
+├── Tailwind CSS
+├── shadcn/ui Components
+├── Lucide React Icons
+└── React Hook Form + Zod (forms)
+```
+
+#### **Project Structure**
+```
+src/
+├── app/                    # Next.js App Router
+│   ├── about/              # About page
+│   ├── blog/               # Blog page
+│   ├── careers/            # Careers page
+│   ├── contact/            # Contact page
+│   ├── features/           # Features page
+│   ├── waitlist/           # Waitlist page
+│   ├── api/                # API routes (to be implemented)
+│   ├── layout.tsx          # Root layout
+│   ├── page.tsx            # Home page
+│   └── globals.css         # Global styles
+├── components/             # Reusable components
+│   └── ui/                 # shadcn/ui components
+├── hooks/                  # Custom React hooks
+├── lib/                    # Utility functions
+│   ├── db.ts               # Database client
+│   ├── utils.ts            # Helper functions
+│   └── email.ts            # Email service (to be implemented)
+└── styles/                 # Style files
+```
+
+#### **Database Schema (Designed)**
+```prisma
+// Current planned models:
+model BetaApplication {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  position  String
+  resumeUrl String?
+  phone     String?
+  website   String?
+  coverLetter String?
+  status    String   @default("pending")
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  website   String?
+  companySize String?
+  useCase   String?
+  status    String   @default("pending")
+  inviteToken String? @unique
+  invitedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmailLog {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  body      String
+  status    String
+  provider  String
+  createdAt DateTime @default(now())
+}
+```
+
+### **Pending Backend Implementation**
+
+#### **1. API Routes** 🚧
+```typescript
+// Planned API endpoints:
+├── /api/applications/
+│   ├── POST /submit        # Submit job application
+│   └── GET /              # List all applications
+├── /api/applications/[id]/
+│   ├── GET /              # Get single application
+│   └── PATCH /            # Update application status
+├── /api/waitlist/
+│   ├── POST /join         # Join beta waitlist
+│   └── GET /              # List waitlist entries
+├── /api/waitlist/invite/
+│   └── POST /             # Send beta invite
+├── /api/admin/
+│   ├── /applications      # Admin application management
+│   └── /waitlist         # Admin waitlist management
+└── /api/contact/
+    └── POST /submit       # Contact form submission
+```
+
+#### **2. Email System** 🚧
+```typescript
+// Email services to implement:
+├── Application confirmation emails
+├── Waitlist confirmation emails
+├── Beta invitation emails
+├── Admin notification emails
+└── Contact form notifications
+```
+
+#### **3. Admin Dashboard** 🚧
+```typescript
+// Admin features:
+├── Application management
+├── Waitlist management
+├── Email campaign system
+├── Analytics dashboard
+└── User management
+```
+
+## 🔧 **Development Environment Setup**
+
+### **Prerequisites**
+- Node.js 18+ 
+- npm or yarn
+- Git
+- VS Code (recommended)
+
+### **Installation Steps**
+```bash
+# Clone the repository
+git clone <repository-url>
+cd paypercrawl
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env.local
+
+# Run database migrations
+npx prisma db push
+npx prisma generate
+
+# Start development server
+npm run dev
+```
+
+### **Environment Variables**
+```env
+# Database
+DATABASE_URL="file:./dev.db"
+
+# Email Service
+RESEND_API_KEY=your_resend_api_key
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Admin
+ADMIN_API_KEY=your_secure_admin_key
+```
+
+## 🎨 **Design System**
+
+### **Color Palette**
+```css
+/* Primary Colors */
+--blue-600: #2563eb;    /* Primary brand color */
+--blue-500: #3b82f6;
+--purple-600: #9333ea;  /* Secondary brand color */
+--purple-500: #a855f7;
+
+/* Neutral Colors */
+--slate-900: #0f172a;   /* Darkest text */
+--slate-600: #475569;   /* Body text */
+--slate-300: #cbd5e1;   /* Borders */
+--slate-50: #f8fafc;    /* Light backgrounds */
+
+/* Status Colors */
+--green-600: #16a34a;   /* Success */
+--red-600: #dc2626;     /* Error/Danger */
+--orange-600: #ea580c;  /* Warning */
+```
+
+### **Typography**
+```css
+/* Font Scale */
+text-xs:   0.75rem;   /* 12px */
+text-sm:   0.875rem;  /* 14px */
+text-base:  1rem;      /* 16px */
+text-lg:   1.125rem;  /* 18px */
+text-xl:   1.25rem;   /* 20px */
+text-2xl:  1.5rem;    /* 24px */
+text-3xl:  1.875rem;  /* 30px */
+text-4xl:  2.25rem;   /* 36px */
+text-5xl:  3rem;      /* 48px */
+```
+
+### **Component Library**
+```typescript
+// shadcn/ui components used:
+├── Button               // Interactive buttons
+├── Card                 // Content containers
+├── Badge                // Status indicators
+├── Input                // Form inputs
+├── Textarea             // Multi-line text inputs
+├── Select               // Dropdown selections
+├── Table                // Data tables
+├── Tabs                 // Content switching
+├── Dialog               // Modal dialogs
+├── Alert                // Error/success messages
+└── Tooltip              // Help text
+```
+
+## 🚀 **Deployment Strategy**
+
+### **Development Environment**
+- **Local**: `npm run dev` on localhost:3000
+- **Database**: SQLite for local development
+- **Email**: Resend for email services
+
+### **Production Environment**
+- **Hosting**: Vercel (recommended for Next.js)
+- **Database**: PostgreSQL (production-ready)
+- **Email**: Resend or SendGrid
+- **CDN**: Vercel's built-in CDN
+- **Monitoring**: Vercel Analytics
+
+### **Environment Configuration**
+```bash
+# Development
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run start        # Start production server
+npm run lint         # Run ESLint
+```
+
+## 📊 **Business Logic & Features**
+
+### **Beta Program Flow**
+```mermaid
+graph TD
+    A[User visits website] --> B[Clicks Join Beta]
+    B --> C[Fills waitlist form]
+    C --> D[Receives confirmation]
+    D --> E[Admin reviews waitlist]
+    E --> F[Send beta invite]
+    F --> G[User activates beta]
+    G --> H[Access to beta features]
+```
+
+### **Job Application Flow**
+```mermaid
+graph TD
+    A[Candidate visits careers] --> B[Browses positions]
+    B --> C[Selects position]
+    C --> D[Fills application form]
+    D --> E[Receives confirmation]
+    E --> F[Admin reviews application]
+    F --> G{Decision}
+    G -->|Approve| H[Schedule interview]
+    G -->|Reject| I[Send rejection]
+```
+
+### **Waitlist Management**
+```mermaid
+graph TD
+    A[User joins waitlist] --> B[Stored in database]
+    B --> C[Admin reviews entries]
+    C --> D[Batch invites sent]
+    D --> E[Users activate beta]
+    E --> F[Track activation rates]
+    F --> G[Analyze conversion metrics]
+```
+
+## 🔍 **Code Quality Standards**
+
+### **TypeScript Guidelines**
+- Use strict TypeScript configuration
+- Define interfaces for all data structures
+- Use proper type annotations
+- Avoid `any` type when possible
+
+### **React Best Practices**
+- Use functional components with hooks
+- Implement proper error boundaries
+- Use memoization for performance optimization
+- Follow accessibility guidelines
+
+### **CSS/Style Guidelines**
+- Use Tailwind utility classes
+- Implement responsive design
+- Follow mobile-first approach
+- Use consistent spacing and typography
+
+### **API Standards**
+- RESTful API design
+- Proper HTTP status codes
+- Consistent error handling
+- Input validation and sanitization
+
+## 🧪 **Testing Strategy**
+
+### **Unit Testing**
+```typescript
+// Testing framework: Jest + React Testing Library
+├── Component testing
+├── Hook testing
+├── Utility function testing
+└── API route testing
+```
+
+### **Integration Testing**
+```typescript
+// End-to-end testing: Playwright
+├── User flow testing
+├── Form submission testing
+├── Navigation testing
+└── Cross-browser testing
+```
+
+### **Performance Testing**
+```typescript
+// Performance monitoring
+├── Lighthouse scores
+├── Core Web Vitals
+├── Bundle size analysis
+└── Loading time optimization
+```
+
+## 🔐 **Security Considerations**
+
+### **Frontend Security**
+- Input validation on all forms
+- XSS prevention
+- CSRF protection
+- Secure cookie handling
+
+### **Backend Security**
+- API rate limiting
+- Input sanitization
+- SQL injection prevention
+- Authentication and authorization
+
+### **Data Protection**
+- GDPR compliance
+- Data encryption
+- Secure password handling
+- Privacy policy implementation
+
+## 📈 **Analytics & Monitoring**
+
+### **User Analytics**
+```typescript
+// Tracking events:
+├── Page views
+├── Form submissions
+├── Button clicks
+├── Waitlist signups
+└── Job applications
+```
+
+### **Performance Monitoring**
+```typescript
+// Metrics to track:
+├── Page load times
+├── API response times
+├── Error rates
+├── User engagement
+└── Conversion rates
+```
+
+## 🤝 **Team Collaboration**
+
+### **Git Workflow**
+```bash
+# Branch naming convention
+feature/add-careers-page
+bugfix/fix-form-validation
+hotfix/critical-security-patch
+
+# Commit message format
+type(scope): description
+
+# Examples
+feat(careers): add application form
+fix(forms): validate email input
+docs(readme): update installation guide
+```
+
+### **Code Review Process**
+1. Create pull request
+2. Automated tests pass
+3. Code review by team lead
+4. Approval and merge
+5. Deployment to staging
+6. Production deployment
+
+## 📋 **Current Technical Debt**
+
+### **High Priority**
+- [ ] Backend API implementation
+- [ ] Database schema completion
+- [ ] Email service integration
+- [ ] Form validation and handling
+
+### **Medium Priority**
+- [ ] Admin dashboard
+- [ ] User authentication
+- [ ] Error handling improvements
+- [ ] Mobile optimization
+
+### **Low Priority**
+- [ ] Advanced animations
+- [ ] Dark mode support
+- [ ] Internationalization
+- [ ] Advanced analytics
+
+## 🎯 **Next Development Priorities**
+
+### **Phase 1: Core Backend (Week 1-2)**
+1. Database schema implementation
+2. API routes for applications
+3. API routes for waitlist
+4. Email service integration
+
+### **Phase 2: Frontend Integration (Week 3)**
+1. Application forms with validation
+2. Waitlist form integration
+3. Error handling and user feedback
+4. Loading states and UX improvements
+
+### **Phase 3: Admin System (Week 4)**
+1. Admin API endpoints
+2. Admin dashboard UI
+3. Authentication system
+4. User management features
+
+### **Phase 4: Polish & Optimization (Week 5)**
+1. Performance optimization
+2. Security enhancements
+3. Testing implementation
+4. Documentation completion
+
+## 📚 **Resources for New Team Members**
+
+### **Documentation**
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+- [shadcn/ui Documentation](https://ui.shadcn.com)
+- [Prisma Documentation](https://www.prisma.io/docs)
+
+### **Tools & Setup**
+- **IDE**: VS Code with recommended extensions
+- **Version Control**: Git and GitHub
+- **Package Manager**: npm
+- **Database**: SQLite (dev), PostgreSQL (prod)
+- **Email**: Resend
+
+### **Communication**
+- **Project Management**: GitHub Projects
+- **Code Reviews**: GitHub Pull Requests
+- **Documentation**: GitHub Wiki
+- **Meetings**: Standups and sprint planning
+
+---
+
+## 🚀 **Getting Started Checklist for New Engineers**
+
+### **Day 1: Environment Setup**
+- [ ] Clone repository
+- [ ] Install dependencies
+- [ ] Set up environment variables
+- [ ] Run development server
+- [ ] Explore codebase structure
+
+### **Day 2: Understanding the Codebase**
+- [ ] Read through all pages
+- [ ] Understand component structure
+- [ ] Review existing API routes
+- [ ] Set up database locally
+- [ ] Test existing functionality
+
+### **Day 3: First Tasks**
+- [ ] Pick a small, well-defined task
+- [ ] Create feature branch
+- [ ] Implement and test changes
+- [ ] Submit pull request
+- [ ] Address review feedback
+
+### **Day 4-5: Full Integration**
+- [ ] Join team standups
+- [ ] Understand project roadmap
+- [ ] Start working on assigned features
+- [ ] Collaborate with team members
+- [ ] Contribute to documentation
+
+This comprehensive overview should give engineers and employees a complete understanding of what has been built, the current state of the application, and what needs to be implemented next. The documentation covers technical architecture, business logic, development workflows, and provides clear guidance for new team members to get started quickly.
+
+
+Let me provide you with a comprehensive checklist of ALL pending work for the PayPerCrawl project, including items I may not have covered in detail yet.
+
+# 📋 **COMPLETE PENDING WORK CHECKLIST**
+
+## 🚨 **CRITICAL - MUST DO IMMEDIATELY**
+
+### **1. Backend Infrastructure**
+- [ ] **Database Schema Implementation**
+  - [ ] Add models to `prisma/schema.prisma`
+  - [ ] Run `npx prisma db push`
+  - [ ] Run `npx prisma generate`
+  - [ ] Test database connection
+
+- [ ] **API Routes Implementation**
+  - [ ] `/api/applications/submit` - POST
+  - [ ] `/api/applications/` - GET
+  - [ ] `/api/applications/[id]` - GET, PATCH
+  - [ ] `/api/waitlist/join` - POST
+  - [ ] `/api/waitlist/` - GET
+  - [ ] `/api/waitlist/invite` - POST
+  - [ ] `/api/contact/submit` - POST
+  - [ ] `/api/admin/applications` - GET
+  - [ ] `/api/admin/waitlist` - GET, POST
+
+- [ ] **Email Service Setup**
+  - [ ] Install Resend/SendGrid
+  - [ ] Create email templates
+  - [ ] Implement email functions
+  - [ ] Set up environment variables
+  - [ ] Test email delivery
+
+### **2. Form Integration**
+- [ ] **Careers Page Forms**
+  - [ ] Replace mailto links with proper forms
+  - [ ] Add form validation
+  - [ ] Implement form submission
+  - [ ] Add success/error states
+  - [ ] Add file upload for resumes
+
+- [ ] **Waitlist Page Forms**
+  - [ ] Replace static content with interactive form
+  - [ ] Add validation
+  - [ ] Implement submission
+  - [ ] Add position tracking
+  - [ ] Add confirmation system
+
+- [ ] **Contact Page Forms**
+  - [ ] Create contact form
+  - [ ] Add validation
+  - [ ] Implement submission
+  - [ ] Add spam protection
+  - [ ] Add auto-response
+
+## 📊 **MEDIUM PRIORITY - BUSINESS FEATURES**
+
+### **3. Admin Dashboard**
+- [ ] **Admin Authentication**
+  - [ ] Create login system
+  - [ ] Implement JWT/session management
+  - [ ] Add role-based access
+  - [ ] Create password reset
+  - [ ] Add security middleware
+
+- [ ] **Admin UI Components**
+  - [ ] Application management interface
+  - [ ] Waitlist management interface
+  - [ ] Email campaign system
+  - [ ] Analytics dashboard
+  - [ ] User management
+
+- [ ] **Admin Features**
+  - [ ] Application status updates
+  - [ ] Bulk email sending
+  - [ ] Waitlist invite management
+  - [ ] Data export functionality
+  - [ ] Activity logging
+
+### **4. User Management System**
+- [ ] **User Authentication**
+  - [ ] User registration
+  - [ ] Login/logout functionality
+  - [ ] Password hashing
+  - [ ] Session management
+  - [ ] Account verification
+
+- [ ] **User Profiles**
+  - [ ] User profile creation
+  - [ ] Profile editing
+  - [ ] Avatar upload
+  - [ ] Preference settings
+  - [ ] Account deletion
+
+### **5. Beta Management System**
+- [ ] **Beta Invite System**
+  - [ ] Invite token generation
+  - [ ] Invite email templates
+  - [ ] Invite tracking
+  - [ ] Expiration handling
+  - [ ] Redemption system
+
+- [ ] **Beta Features**
+  - [ ] Beta access control
+  - [ ] Feature flagging
+  - [ ] Beta feedback system
+  - [ ] Usage analytics
+  - [ ] Beta progress tracking
+
+## 🎨 **FRONTEND IMPROVEMENTS**
+
+### **6. Mobile Experience**
+- [ ] **Responsive Navigation**
+  - [ ] Hamburger menu implementation
+  - [ ] Mobile-friendly navigation
+  - [ ] Touch-optimized interactions
+  - [ ] Mobile search functionality
+  - [ ] Mobile footer optimization
+
+- [ ] **Mobile Forms**
+  - [ ] Mobile-optimized form layouts
+  - [ ] Touch-friendly input fields
+  - [ ] Mobile validation messages
+  - [ ] Mobile loading states
+  - [ ] Mobile error handling
+
+### **7. User Experience Enhancements**
+- [ ] **Loading States**
+  - [ ] Loading spinners
+  - [ ] Skeleton screens
+  - [ ] Progress indicators
+  - [ ] Async state management
+  - [ ] Optimistic UI updates
+
+- [ ] **Error Handling**
+  - [ ] Error boundaries
+  - [ ] User-friendly error messages
+  - [ ] Error recovery options
+  - [ ] Form error validation
+  - ] Network error handling
+
+- [ ] **Accessibility**
+  - [ ] ARIA labels implementation
+  - [ ] Keyboard navigation
+  - [ ] Screen reader compatibility
+  - [ ] Color contrast optimization
+  - ] Focus management
+
+### **8. Performance Optimization**
+- [ ] **Image Optimization**
+  - [ ] Next.js Image component usage
+  - [ ] Lazy loading implementation
+  - [ ] Image compression
+  - [ ] Responsive images
+  - [ ] CDN configuration
+
+- [ ] **Code Optimization**
+  - [ ] Bundle analysis
+  - [ ] Code splitting
+  - [ ] Lazy loading components
+  - [ ] Tree shaking
+  - [ ] Performance monitoring
+
+## 🔧 **TECHNICAL INFRASTRUCTURE**
+
+### **9. Testing Framework**
+- [ ] **Unit Testing**
+  - [ ] Jest configuration
+  - [ ] Component testing
+  - [ ] Hook testing
+  - [ ] Utility function testing
+  - [ ] API route testing
+
+- [ ] **Integration Testing**
+  - [ ] Playwright setup
+  - [ ] End-to-end testing
+  - [ ] User flow testing
+  - [ ] Cross-browser testing
+  - [ ] Mobile testing
+
+- [ ] **Performance Testing**
+  - [ ] Lighthouse integration
+  - [ ] Core Web Vitals monitoring
+  - [ ] Load testing
+  - [ ] Stress testing
+  - [ ] Performance budgets
+
+### **10. Monitoring & Analytics**
+- [ ] **Error Monitoring**
+  - [ ] Sentry integration
+  - [ ] Error tracking
+  - [ ] Performance monitoring
+  - [ ] User session recording
+  - [ ] Error alerting
+
+- [ ] **User Analytics**
+  - [ ] Google Analytics setup
+  - [ ] Event tracking
+  - [ ] User behavior analysis
+  - [ ] Conversion tracking
+  - [ ] Funnel analysis
+
+- [ ] **Application Monitoring**
+  - [ ] Uptime monitoring
+  - [ ] Response time tracking
+  - [ ] Error rate monitoring
+  - [ ] Resource usage monitoring
+  - [ ] Custom metrics
+
+### **11. Security Enhancements**
+- [ ] **Input Validation**
+  - [ ] Server-side validation
+  - [ ] Client-side validation
+  - [ ] Input sanitization
+  - [ ] SQL injection prevention
+  - [ ] XSS prevention
+
+- [ ] **Authentication Security**
+  - [ ] Password strength requirements
+  - [ ] Rate limiting
+  - [ ] Session security
+  - [ ] CSRF protection
+  - [ ] Secure headers
+
+- [ ] **Data Security**
+  - [ ] Data encryption
+  - [ ] Secure data storage
+  - [ ] Backup systems
+  - [ ] Data retention policies
+  - [ ] GDPR compliance
+
+## 📈 **BUSINESS & MARKETING**
+
+### **12. Content Management**
+- [ ] **Blog System**
+  - [ ] Admin blog creation
+  - [ ] Blog editing interface
+  - [ ] Blog categorization
+  - [ ] Blog commenting system
+  - [ ] Blog SEO optimization
+
+- [ ] **Content Updates**
+  - [ ] Dynamic content management
+  - [ ] Content versioning
+  - [ ] Content scheduling
+  - [ ] Content analytics
+  - [ ] Content approval workflow
+
+### **13. SEO & Marketing**
+- [ ] **SEO Optimization**
+  - [ ] Meta tags implementation
+  - [ ] Structured data
+  - [ ] Sitemap generation
+  - [ ] Robots.txt configuration
+  - [ ] Open Graph tags
+
+- [ ] **Marketing Tools**
+  - [ ] Email newsletter system
+  - [ ] Social media integration
+  - [ ] Referral program
+  - [ ] A/B testing framework
+  [ ] Landing page builder
+
+### **14. Analytics & Reporting**
+- [ ] **Business Analytics**
+  - [ ] User acquisition metrics
+  - [ ] Conversion tracking
+  - [ ] Revenue analytics
+  - [ ] User retention analysis
+  - [ ] Cohort analysis
+
+- [ ] **Reporting System**
+  - [ ] Custom report builder
+  - [ ] Automated reports
+  - [ ] Data visualization
+  - [ ] Export functionality
+  - [ ] Scheduled reports
+
+## 🚀 **ADVANCED FEATURES**
+
+### **15. Advanced Admin Features**
+- [ ] **Advanced User Management**
+  - [ ] User roles and permissions
+  - [ ] User activity logging
+  - [ ] User segmentation
+  - [ ] Bulk user operations
+  - [ ] User import/export
+
+- [ ] **Advanced Analytics**
+  - [ ] Real-time dashboard
+  - [ ] Custom metrics
+  - [ ] Predictive analytics
+  - [ ] Machine learning insights
+  - [ ] Advanced data visualization
+
+- [ ] **System Administration**
+  - [ ] System health monitoring
+  - [ ] Performance optimization
+  - [ ] Database management
+  - [ ] Backup and recovery
+  - [ ] System configuration
+
+### **16. Integration Features**
+- [ ] **Third-party Integrations**
+  - [ ] Slack notifications
+  - [ ] Discord integration
+  - [ ] Zapier integration
+  - [ ] Webhook system
+  - [ ] API documentation
+
+- [ ] **Payment Processing**
+  - [ ] Stripe integration
+  - [ ] Subscription management
+  - [ ] Payment processing
+  - [ ] Invoice generation
+  [ ] Financial reporting
+
+### **17. Scalability Features**
+- [ ] **Database Scaling**
+  - [ ] Database optimization
+  - [ ] Query optimization
+  - [ ] Database sharding
+  - [ ] Caching layer
+  - [ ] Database replication
+
+- [ ] **Application Scaling**
+  - [ ] Load balancing
+  - [ ] Auto-scaling
+  [ ] CDN optimization
+  [ ] Global deployment
+  [ ] Performance optimization
+
+## 📋 **DEPLOYMENT & OPERATIONS**
+
+### **18. Deployment Pipeline**
+- [ ] **CI/CD Setup**
+  - [ ] GitHub Actions configuration
+  - [ ] Automated testing
+  - [ ] Automated deployment
+  - [ ] Staging environment
+  - [ ] Production deployment
+
+- [ ] **Environment Management**
+  - [ ] Development environment
+  - [ ] Staging environment
+  [ ] Production environment
+  [ ] Environment configuration
+  [ ] Secret management
+
+### **19. Infrastructure**
+- [ ] **Hosting Setup**
+  - [ ] Vercel deployment
+  [ ] Custom domain configuration
+  [ ] SSL certificate setup
+  [ ] CDN configuration
+  [ ] DNS configuration
+
+- [ ] **Database Hosting**
+  [ ] PostgreSQL setup
+  [ ] Database backup
+  [ ] Database monitoring
+  [ ] Database security
+  [ ] Database scaling
+
+## 🎯 **QUICK WIN TASKS (1-2 DAYS EACH)**
+
+### **Immediate Impact Tasks**
+1. **Database schema implementation** (1 day)
+2. **Basic API routes** (2 days)
+3. **Email service setup** (1 day)
+4. **Careers form integration** (1 day)
+5. **Waitlist form integration** (1 day)
+6. **Contact form creation** (1 day)
+7. **Basic admin authentication** (2 days)
+8. **Mobile navigation** (1 day)
+9. **Loading states** (1 day)
+10. **Error handling** (1 day)
+
+### **Medium Impact Tasks**
+1. **Admin dashboard** (3-4 days)
+2. **User authentication** (3-4 days)
+3. **Beta management** (2-3 days)
+4. **Blog system** (3-4 days)
+5. **Analytics setup** (2-3 days)
+6. **SEO optimization** (2-3 days)
+7. **Testing framework** (3-4 days)
+8. **Security enhancements** (3-4 days)
+
+### **Large Impact Tasks**
+1. **Advanced admin features** (1-2 weeks)
+2. **Payment processing** (1-2 weeks)
+3. **Advanced analytics** (1-2 weeks)
+4. **Scalability features** (2-3 weeks)
+5. **Third-party integrations** (2-3 weeks)
+
+## 📊 **PRIORITY MATRIX**
+
+```
+HIGH IMPACT | LOW EFFORT    | HIGH EFFORT
+-----------|---------------|-------------
+           | Quick Wins    | Major Projects
+           | (Do Now)      | (Plan Carefully)
+-----------|---------------|-------------
+LOW IMPACT | Fill-ins      | Time Sinks
+           | (Do Later)    | (Avoid)
+```
+
+### **Quick Wins (High Impact, Low Effort)**
+- Database schema implementation
+- Basic API routes
+- Email service setup
+- Form integrations
+- Mobile navigation
+
+### **Major Projects (High Impact, High Effort)**
+- Admin dashboard
+- User authentication system
+- Beta management system
+- Payment processing
+- Advanced analytics
+
+### **Fill-ins (Low Impact, Low Effort)**
+- Additional UI components
+- Minor styling improvements
+- Content updates
+- Documentation improvements
+
+### **Time Sinks (Low Impact, High Effort)**
+- Over-engineering features
+- Unnecessary complexity
+- Edge case handling
+- Premature optimization
+
+## 🚀 **RECOMMENDED EXECUTION ORDER**
+
+### **Week 1: Foundation**
+1. Database schema implementation
+2. Basic API routes (applications, waitlist)
+3. Email service setup
+4. Form integrations (careers, waitlist)
+
+### **Week 2: Core Features**
+1. Contact form creation
+2. Basic admin authentication
+3. Admin dashboard (basic version)
+4. User authentication system
+
+### **Week 3: User Experience**
+1. Mobile navigation and optimization
+2. Loading states and error handling
+3. Beta management system
+4. Testing framework setup
+
+### **Week 4: Polish**
+1. SEO optimization
+2. Analytics setup
+3. Security enhancements
+4. Performance optimization
+
+### **Week 5+: Advanced Features**
+1. Advanced admin features
+2. Payment processing
+3. Third-party integrations
+4. Scalability features
+
+This comprehensive checklist covers everything from critical backend work to advanced features. The key is to start with the **Quick Wins** to get immediate value, then move to **Major Projects** for long-term success, while avoiding **Time Sinks** that don't provide significant value.

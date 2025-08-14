@@ -1,0 +1,47 @@
+# PayPerCrawl Translation Template
+# Copyright (C) 2025 PayPerCrawl
+# This file is distributed under the same license as the PayPerCrawl package.
+msgid ""
+msgstr ""
+"Project-Id-Version: PayPerCrawl 1.0.0-beta\n"
+"Report-Msgid-Bugs-To: https://paypercrawl.com/support\n"
+"POT-Creation-Date: 2025-07-25 22:23+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: pay-per-crawl.php:3
+msgid "Turn AI bot traffic into revenue. Free beta - you keep 100% earnings!"
+msgstr ""
+
+#: includes/class-admin.php:50
+msgid "PayPerCrawl"
+msgstr ""
+
+#: includes/class-admin.php:55
+msgid "Dashboard"
+msgstr ""
+
+#: includes/class-admin.php:63
+msgid "Analytics"
+msgstr ""
+
+#: includes/class-admin.php:71
+msgid "Settings"
+msgstr ""
+
+#: templates/dashboard.php:48
+msgid "PayPerCrawl Dashboard"
+msgstr ""
+
+#: templates/analytics.php:42
+msgid "PayPerCrawl Analytics"
+msgstr ""
+
+#: templates/settings.php:23
+msgid "PayPerCrawl Settings"
+msgstr ""
